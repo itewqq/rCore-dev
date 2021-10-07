@@ -31,3 +31,24 @@ macro_rules! println {
         $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
     }
 }
+
+#[macro_export]
+macro_rules! error {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[0;31m", $fmt, "\x1b[0m\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! info {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[0;34m", $fmt, "\x1b[0m\n") $(, $($arg)+)?));
+    }
+}
+
+#[macro_export]
+macro_rules! debug {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::print(format_args!(concat!("\x1b[0;32m", $fmt, "\x1b[0m\n") $(, $($arg)+)?));
+    }
+}
