@@ -2,4 +2,7 @@ os/target/*
 os/.vscode/*
 os/src/link_app.S
 os/Cargo.lock
+user/target/*
+user/.vscode/*
+user/Cargo.lock
 tools/
