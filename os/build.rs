@@ -12,8 +12,10 @@ fn main(){
         .unwrap()
         .into_iter()
         .map(|file_path| {
-            let file_ext = file_path.unwrap().file_name().into_string().unwrap();
-            file_ext.split('/').collect::<Vec<&str>>().pop().unwrap().to_string()
+            let mut file_ext = file_path.unwrap().file_name().into_string().unwrap();
+            // file_ext.split('/').collect::<Vec<&str>>().pop().unwrap().to_string();
+            file_ext.drain(file_ext.len()-3..file_ext.len());// remove ".rs"
+            file_ext
         })
         .collect();
     let app_number = paths.len();
