@@ -1,5 +1,6 @@
 use core::cell::RefCell;
 use lazy_static::*;
+use crate::trap::TrapContext;
 
 // Kernel stack
 
@@ -18,6 +19,12 @@ struct UserStack {
 
 impl KernelStack {
     fn get_sp(&self) -> usize {self.data.as_ptr() as usize + KERNEL_STACK_SIZE}
+
+    pub fn push_context(&self, ctx: TrapContext) -> &'static mut TrapContext {
+        let ctx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
+        unsafe { *ctx_ptr = ctx; } // copy ctx to stack
+        unsafe { ctx_ptr.as_mut().unwrap() }
+    }
 }
 
 impl UserStack {
@@ -70,7 +77,7 @@ impl AppManagerInner{
             (addr as *mut u8).write_volatile(0);
         }
         let src = core::slice::from_raw_parts(
-            (APP_BASE_ADDRESS+self.app_start_addrs[app_id]) as *const u8, 
+            (self.app_start_addrs[app_id]) as *const u8, 
             self.app_start_addrs[app_id+1]-self.app_start_addrs[app_id]);
         let dst = core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8,
             self.app_start_addrs[app_id+1]-self.app_start_addrs[app_id]);
@@ -78,6 +85,7 @@ impl AppManagerInner{
     }
 }
 
+// lazy_static will be initialized when the object is first used
 lazy_static! {
     static ref APP_MANAGER: AppManager = AppManager {
         inner: RefCell::new({
@@ -98,3 +106,26 @@ lazy_static! {
     };
 }
 
+pub fn init() {
+    print_app_info();
+}
+
+pub fn print_app_info() {
+    APP_MANAGER.inner.borrow().print_app_addrs();
+}
+
+pub fn run_next_app() -> ! {
+    let current_app = APP_MANAGER.inner.borrow().get_current_app();
+    unsafe {
+        APP_MANAGER.inner.borrow().load_app(current_app);
+    }
+    APP_MANAGER.inner.borrow_mut().move_to_next_app();
+    extern "C" { fn __restore(cx_addr: usize); }
+    // execute it with sret in __restore
+    unsafe {
+        __restore(KERNEL_STACK.push_context(
+            TrapContext::app_init_context(APP_BASE_ADDRESS, USER_STACK.get_sp())
+        ) as *const _ as usize);
+    }
+    panic!("Unreachable in batch::run_current_app!");
+}

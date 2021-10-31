@@ -9,7 +9,7 @@ pub fn sys_write(fd: usize, buffer: *const u8, len: usize) -> isize {
             len as isize
         },
         _ => {
-            panic!("Unsupported fd type: {}", fd)
+            panic!("Unsupported fd type: {} for sys_write", fd)
         }
     }
 }
