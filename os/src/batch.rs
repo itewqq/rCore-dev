@@ -72,7 +72,7 @@ impl AppManagerInner{
             panic!("All applications completed!");
         }
         println!("[kernel] Loading app{} ...", app_id);
-        llvm_asm!("fence.i" :::: "volatile"); // clear i-cache
+        asm!("fence.i"); // clear i-cache
         for addr in APP_BASE_ADDRESS..APP_BASE_ADDRESS+APP_SIZE_LIMIT {
             (addr as *mut u8).write_volatile(0);
         }
