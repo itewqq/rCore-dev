@@ -1,7 +1,7 @@
 use std::fs::{File, read_dir};
 use std::{hash::Hasher, io::Write};
 
-static TARGET_PATH: &str = "/home/itemqq/rCore-dev/user/target/riscv64gc-unknown-none-elf/release/";
+static TARGET_PATH: &str = "../user/target/riscv64gc-unknown-none-elf/release/";
 
 fn main(){
     let mut link_file = match File::open("./src/link_app.S") {
