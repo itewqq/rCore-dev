@@ -4,7 +4,7 @@ use crate::trap::TrapContext;
 
 // Kernel stack
 
-const USER_STACK_SIZE: usize = 4096 * 2;
+pub const USER_STACK_SIZE: usize = 4096;
 const KERNEL_STACK_SIZE: usize = 4096 * 2;
 
 #[repr(align(4096))]
@@ -13,7 +13,7 @@ struct KernelStack {
 }
 
 #[repr(align(4096))]
-struct UserStack {
+pub struct UserStack {
     data: [u8; USER_STACK_SIZE],
 }
 
@@ -28,24 +28,24 @@ impl KernelStack {
 }
 
 impl UserStack {
-    fn get_sp(&self) -> usize {self.data.as_ptr() as usize + USER_STACK_SIZE}
+    pub fn get_sp(&self) -> usize {self.data.as_ptr() as usize + USER_STACK_SIZE}
 }
 
 static KERNEL_STACK: KernelStack = KernelStack { data: [0; KERNEL_STACK_SIZE] };
-static USER_STACK: UserStack = UserStack { data: [0; USER_STACK_SIZE] };
+pub static USER_STACK: UserStack = UserStack { data: [0; USER_STACK_SIZE] };
 
 
 // AppManager
 
-const MAX_APP_NUM: usize = 16;
-const APP_BASE_ADDRESS: usize = 0x80400000;
-const APP_SIZE_LIMIT: usize = 0x20000;
+pub const MAX_APP_NUM: usize = 16;
+pub const APP_BASE_ADDRESS: usize = 0x80400000;
+pub const APP_SIZE_LIMIT: usize = 0x20000;
 
-struct AppManager {
-    inner: RefCell<AppManagerInner>,
+pub struct AppManager {
+    pub inner: RefCell<AppManagerInner>,
 }
 
-struct AppManagerInner {
+pub struct AppManagerInner {
     num_app: usize,
     current_app: usize,
     app_start_addrs: [usize; MAX_APP_NUM+1],
@@ -64,6 +64,8 @@ impl AppManagerInner{
     }
 
     pub fn get_current_app(&self) -> usize {self.current_app}
+
+    pub fn get_current_app_size(&self) -> usize {self.app_start_addrs[self.current_app+1]-self.app_start_addrs[self.current_app]}
 
     pub fn move_to_next_app(&mut self) {self.current_app+=1;}
 
@@ -87,7 +89,7 @@ impl AppManagerInner{
 
 // lazy_static will be initialized when the object is first used
 lazy_static! {
-    static ref APP_MANAGER: AppManager = AppManager {
+    pub static ref APP_MANAGER: AppManager = AppManager {
         inner: RefCell::new({
             extern "C" { fn _num_app(); } // label in link_app.S
             let num_app_ptr = _num_app as usize as *const usize;

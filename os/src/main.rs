@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![allow(dead_code)]
 #![feature(asm)]
 #![feature(global_asm)]
 #![feature(panic_info_message)]
@@ -42,5 +43,4 @@ pub fn rust_main() -> ! {
     trap::init();
     batch::init();
     batch::run_next_app();
-    panic!("Shutdown machine!");
 }

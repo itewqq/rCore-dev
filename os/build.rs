@@ -1,5 +1,5 @@
 use std::fs::{File, read_dir};
-use std::{hash::Hasher, io::Write};
+use std::io::Write;
 
 static TARGET_PATH: &str = "../user/target/riscv64gc-unknown-none-elf/release/";
 
