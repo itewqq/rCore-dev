@@ -1,19 +1,19 @@
-# Lab2: Batch Processing and Priviledges
+# Lab2: Batch Processing and Privileges
 
 In lab 1, we have made our code work on a **bare-metal computer** (simulated by QEMU) successfully. However, it can do nothing but print some strings we hardcoded in the program on the terminal. Of course you can make it more complicated, such as factoring a large number, calculating the inverse of a matrix, etc. That's cool but there are two significant drawbacks of this approach:
 
-1. The CPU runs a single program each time. Since the computing resuorces are precious(especially in the old time when you don't have a modern OS), users who have many programs to run have to wait infront of the computer and manully load&start the next program after previous one finished. Such a labour work.
-2. Nobody wants to write the SBI and assembly level stuff everytime, and it's totally duplication of efforts.
+1. The CPU runs a single program each time. Since the computing resources are precious(especially in the old time when you don't have a modern OS), users who have many programs to run have to wait in front of the computer and manually load&start the next program after the previous one finished.
+2. Nobody wants to write the SBI and assembly level stuff every time, and it's a duplication of efforts.
 
 In order to solve these problems, people invented the `Simple Batch Processing System`, which can load a batch of application programs and automatically execute them one by one. Besides, the Batch Processing System will provide some "library" code such as console output functions which may be reused by many programs. 
 
-A new problem arises when we use the batch process system: error handling. User's program may (often) run into errors, unconsciously or intentionally. We do not want the error of any program affect others or the system, so the system should be able to hanble errors and terminate the programs if necessary. To achieve this goal we introduced the `Priviledges mechanism` and isolate user's code from system, which we will refered to as `usermode` and `kernelmode`. Note that this mechanism requires some support from hardware, and we will illustrate that with code in the following parts.
+A new problem arises when we use the batch process system: error handling. The user's program may (often) run into errors, unconsciously or intentionally. We do not want the error of any program to affect others or the system, so the system should be able to handle these errors and terminate the programs when necessary. To achieve this goal we introduced the `Privileges mechanism` and isolate user's code from the system, which we will refer to as `user mode` and `kernel mode`. Note that this mechanism requires some support from hardware, and we will illustrate that with code in the following parts.
 
-## 0x00 Priviledges mechanism
+## 0x00 Privileges mechanism
 
-The underlying reason for implementing the priviledges mechanism is the system cannot trust any submitted program. Any errors or attacks could happen and may corrupt the system. We have to restrict users' programs in an isolated "harmless" environment, where they have no access to 1) arbitrary memory or 2) any over-powerful instructions which may break the computer. In this lab we mainly focus on the last point.
+The underlying reason for implementing the privileges mechanism is the system cannot trust any submitted program. Any errors or attacks could happen and may corrupt the system. We have to restrict users' programs in an isolated "harmless" environment, where they have no access to 1) arbitrary memory or 2) any over-powerful instructions which may break the computer. In this lab, we mainly focus on the last point.
 
-Obviously, prohibiting users' program from using priviledged instructions need the help from processor. In riscv64, 4 levels of priviledges are designed:
+Prohibiting users' program from using privileged instructions need the help from CPU. In riscv64, 4 levels of privileges are designed:
 
 | Level | Encode |         Name        |
 |:-----:|:------:|:-------------------:|
@@ -22,15 +22,15 @@ Obviously, prohibiting users' program from using priviledged instructions need t
 |   2   |   10   |    H, Hypervisor    |
 |   3   |   11   |      M, Machine     |
 
-All modes, except `Machine` mode, have to go through binary interfaces provided by higer modes if they want to control the hardware. The priviledges level and their relation in our scenario are shown in the following figure:
+All modes, except `Machine`, have to go through binary interfaces provided by higher levels to control the hardware. The privileges level and their relation in our scenario are shown in the following figure:
 
 ![](https://rcore-os.github.io/rCore-Tutorial-Book-v3/_images/PrivilegeStack.png)
 
-The binary interfaces between User mode and Supervisor mode are named as Application Binary Interface (ABI), or another more famous one: `syscall`. 
+The binary interfaces between User mode and Supervisor mode are named Application Binary Interface (ABI), or another more famous one: `syscall`. 
 
-Each time when a user mode app want to control the hardware(e.g., print a line on the screen), the following sequence will take place:
+Each time when a user mode app want to access hardware resources(e.g., print a line on the screen), the following sequence will take place:
 
-1. The app uses the `ecall` instruction to trigger a `trap`, which will cause the CPU to elevate current priviledge level and jump to the `trap handler` function set in the `stvec` register. 
+1. The app uses `ecall` instruction to trigger a `trap`, which will cause the CPU to elevate the current privilege level and jump to the `trap handler` function set in the `stvec` register. 
 
 ```rust
 global_asm!(include_str!("trap.S"));
@@ -43,7 +43,7 @@ pub fn init(){
 }
 ```
 
-2. The `trap handler` in the OS will first store the context of the app, then handles the trap according to its parameters. We implemeted this in `./os/src/trap/trap.S` 
+2. The `trap handler` in the OS will first store the context of the app, then handles the trap according to its parameters. We implemented this in `./os/src/trap/trap.S` 
 
 ```assembly
 .altmacro
@@ -87,7 +87,7 @@ __alltraps:
     call trap_handler
 ```
 
-3. In `trap handler` we handle the traps according to their type, or just terminate it and run next app if we think it's doing something bad.
+3. In `trap handler` we handle the traps according to their type, or just terminate it and run the next app if we think it's doing something bad.
 
 ```rust
 #[no_mangle]
@@ -119,7 +119,7 @@ pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
 }
 ```
 
-4. After the desired operations have been executed, the OS will recover the context of the user mode app. Then the OS uses `sret` instruction to make the CPU reduce the priviledge level to user mode and jump back to the next line of the `ecall` in step 1.
+4. After the desired operations have been executed, the OS will recover the context of the user mode app. Then the OS uses `sret` instruction to make the CPU reduce the privilege level to user mode and jump back to the next line of the `ecall` in step 1.
 
 ```assembly
 __restore:
@@ -151,17 +151,125 @@ __restore:
 
 5. Then the user mode app continue to run.
 
-The interaction between mode S and mode M is similar to above one, so in general the privilege level switching can be illustrated like this:
+The interaction between mode S and mode M is similar to the above one, so generally the privilege level switching can be illustrated like this:
 
 ![](https://rcore-os.github.io/rCore-Tutorial-Book-v3/_images/EnvironmentCallFlow.png)
 
-Also, the OS has the power to terminate a user mode program when necessary (e.g. the app try to use some priviledge instruction like `sret`).
+Also, the OS has the power to terminate a user mode program when necessary (e.g. the app tries to use some privilege instruction like `sret`).
 
->The associated code is placed in the `./os/trap` directory.
+>The associated code was placed in the `./os/trap` directory.
 
 ## 0x01 Batch Processing System
 
-With the help of priviledges we can safely implement a batch processing system. The basic idea is straightfoward: each time we load a binary to address 0x80400000 then jump there to execute. Specifically, for each application we take the following operations:
+With the help of privileges, we can safely implement a batch processing system. The basic idea is straightforward: each time we load a binary to address 0x80400000 and jump there to execute. We have no file system yet, hence the applications have to be stored in the OS's binary at compile time. Our solution is to generate a `link_app.S` includeing all the application binary files:
+
+```assembly
+
+    .align 3
+    .section .data
+    .global _num_app
+_num_app:
+    .quad 11
+    .quad app_0_start
+    .quad app_1_start
+    .quad app_2_start
+    .quad app_3_start
+    .quad app_4_start
+    .quad app_5_start
+    .quad app_6_start
+    .quad app_7_start
+    .quad app_8_start
+    .quad app_9_start
+    .quad app_10_start
+    .quad app_10_end
+
+    .section .data
+    .global app_0_start
+    .global app_0_end
+app_0_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/00hello_world.bin"
+app_0_end:
+
+    .section .data
+    .global app_1_start
+    .global app_1_end
+app_1_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/01store_fault.bin"
+app_1_end:
+
+    .section .data
+    .global app_2_start
+    .global app_2_end
+app_2_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/02power.bin"
+app_2_end:
+
+    .section .data
+    .global app_3_start
+    .global app_3_end
+app_3_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/03_ch2_bad_instruction.bin"
+app_3_end:
+
+    .section .data
+    .global app_4_start
+    .global app_4_end
+app_4_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04_ch2_bad_register.bin"
+app_4_end:
+
+    .section .data
+    .global app_5_start
+    .global app_5_end
+app_5_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/05_ch2t_bad_address.bin"
+app_5_end:
+
+    .section .data
+    .global app_6_start
+    .global app_6_end
+app_6_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/06ch2_exit.bin"
+app_6_end:
+
+    .section .data
+    .global app_7_start
+    .global app_7_end
+app_7_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/07ch2_hello_world.bin"
+app_7_end:
+
+    .section .data
+    .global app_8_start
+    .global app_8_end
+app_8_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/08ch2_power.bin"
+app_8_end:
+
+    .section .data
+    .global app_9_start
+    .global app_9_end
+app_9_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/09ch2_write1.bin"
+app_9_end:
+
+    .section .data
+    .global app_10_start
+    .global app_10_end
+app_10_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/10ch2t_write0.bin"
+app_10_end:
+```
+
+And then we include the assembly file in `./os/src/main.rs`:
+
+```rust
+global_asm!(include_str!("link_app.S"));
+```
+
+The code to generate `link_app.S` is `./os/build.rs`.
+
+Then, for each application we take the following operations:
 
 1. Erase the memory from 0x80400000 to 0x80400000+0x20000, then load the target binary to 0x80400000 (we assume that it's size < 0x20000 Bytes)
 
@@ -202,7 +310,7 @@ pub fn app_init_context(entry: usize, sp: usize) -> Self {
 }
 ```
 
-3. Use `__restore` to fire up a application and set the kernel stack at the same time.
+3. Reuse `__restore` to fire up a application and set the kernel stack at the same time.
 
 ```rust
 // os/src/batch.rs
@@ -215,7 +323,7 @@ unsafe {
 }
 ```
 
-4. After an application finished, we move to next app.
+4. After an application finished, move to the next app.
 
 ```rust
 // os/src/batch.rs
@@ -244,9 +352,9 @@ pub fn sys_exit(exit_code: i32) -> ! {
 }
 ```
 
-## 0x02 Basic Security Check
+## 0x02 Basic Security Checks
 
-Currently we only provide two syscalls for the user mode applications. As the `sys_write` may write to some important addresses, we should add some basic security checks on it. Here we only check whether the target interval covers addresses other than the user stack space and the app's storage space.
+Currently, we only provide two `syscall`s for the user mode applications. As the `sys_write` may write to some sensitive addresses, we need to add some security checks. Here we verify whether the target interval covers addresses other than the user stack space and the app's storage space.
 
 ```rust
 use crate::batch::{APP_BASE_ADDRESS, APP_SIZE_LIMIT, APP_MANAGER, USER_STACK, USER_STACK_SIZE};
@@ -287,6 +395,108 @@ pub fn sys_write(fd: usize, buffer: *const u8, len: usize) -> isize {
     }
 }
 ```
+
+## 0x03 Final Result
+
+Run `make run` in the `os` directory:
+
+```bash
+Platform: qemu
+   Compiling os v0.1.0 (/home/qsp/rCore-dev/os)
+    Finished release [optimized] target(s) in 0.41s
+[rustsbi] RustSBI version 0.2.0-alpha.6
+.______       __    __      _______.___________.  _______..______   __
+|   _  \     |  |  |  |    /       |           | /       ||   _  \ |  |
+|  |_)  |    |  |  |  |   |   (----`---|  |----`|   (----`|  |_)  ||  |
+|      /     |  |  |  |    \   \       |  |      \   \    |   _  < |  |
+|  |\  \----.|  `--'  |.----)   |      |  |  .----)   |   |  |_)  ||  |
+| _| `._____| \______/ |_______/       |__|  |_______/    |______/ |__|
+
+[rustsbi] Implementation: RustSBI-QEMU Version 0.0.2
+[rustsbi-dtb] Hart count: cluster0 with 1 cores
+[rustsbi] misa: RV64ACDFIMSU
+[rustsbi] mideleg: ssoft, stimer, sext (0x222)
+[rustsbi] medeleg: ima, ia, bkpt, la, sa, uecall, ipage, lpage, spage (0xb1ab)
+[rustsbi] pmp0: 0x10000000 ..= 0x10001fff (rwx)
+[rustsbi] pmp1: 0x80000000 ..= 0x8fffffff (rwx)
+[rustsbi] pmp2: 0x0 ..= 0xffffffffffffff (---)
+qemu-system-riscv64: clint: invalid write: 00000004
+[rustsbi] enter supervisor 0x80200000
+[kernel] Hello, world!
+Number of app is 11
+[kernel] app 0 starts at 0x8020a068, ends at 0x8020b070
+[kernel] app 1 starts at 0x8020b070, ends at 0x8020c108
+[kernel] app 2 starts at 0x8020c108, ends at 0x8020d2b8
+[kernel] app 3 starts at 0x8020d2b8, ends at 0x8020e298
+[kernel] app 4 starts at 0x8020e298, ends at 0x8020f3f8
+[kernel] app 5 starts at 0x8020f3f8, ends at 0x802103d0
+[kernel] app 6 starts at 0x802103d0, ends at 0x802113b8
+[kernel] app 7 starts at 0x802113b8, ends at 0x802123e8
+[kernel] app 8 starts at 0x802123e8, ends at 0x80213598
+[kernel] app 9 starts at 0x80213598, ends at 0x80214c20
+[kernel] app 10 starts at 0x80214c20, ends at 0x802161d8
+[kernel] Loading app0 ...
+Hello, world!
+[kernel] IllegalInstruction in application, core dumped.
+[kernel] Loading app1 ...
+Into Test store_fault, we will insert an invalid store operation...
+Kernel should kill this application!
+[kernel] PageFault in application, core dumped.
+[kernel] Loading app2 ...
+3^10000=5079
+3^20000=8202
+3^30000=8824
+3^40000=5750
+3^50000=3824
+3^60000=8516
+3^70000=2510
+3^80000=9379
+3^90000=2621
+3^100000=2749
+Test power OK!
+[kernel] Application exited with code 0
+[kernel] Loading app3 ...
+[kernel] IllegalInstruction in application, core dumped.
+[kernel] Loading app4 ...
+[kernel] IllegalInstruction in application, core dumped.
+[kernel] Loading app5 ...
+[kernel] PageFault in application, core dumped.
+[kernel] Loading app6 ...
+[kernel] Application exited with code 1234
+[kernel] Loading app7 ...
+Hello world from user mode program!
+Test hello_world OK!
+[kernel] Application exited with code 0
+[kernel] Loading app8 ...
+3^10000=5079
+3^20000=8202
+3^30000=8824
+3^40000=5750
+3^50000=3824
+3^60000=8516
+3^70000=2510
+3^80000=9379
+3^90000=2621
+3^100000=2749
+Test power OK!
+[kernel] Application exited with code 0
+[kernel] Loading app9 ...
+Unsupported fd type: 1234 for sys_write
+string from data section
+strinstring from stack section
+strin
+Test write1 OK!
+[kernel] Application exited with code 0
+[kernel] Loading app10 ...
+Illegal Address detected!
+Illegal Address detected!
+Illegal Address detected!
+Test write0 OK!
+[kernel] Application exited with code 0
+Panicked at src/batch.rs:74 All applications completed!
+```
+
+Note that we add malformed code in some apps and the security checks find them successfully, check the code in `./user/src/bin`.
 
 ## References
 
