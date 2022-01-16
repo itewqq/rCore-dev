@@ -1,9 +1,13 @@
-use riscv::register::{mtvec::TrapMode, scause::{self, Exception, Trap}, stval, stvec};
+use riscv::register::{mtvec::TrapMode, scause::{self, Exception, Trap}, stval, stvec, sie};
 use crate::syscall::syscall;
-use crate::batch::run_next_app;
-pub use self::context::TrapContext;
+use crate::task::{
+    exit_current_and_run_next,
+    suspend_current_and_run_next,
+};
 
 mod context;
+
+pub use self::context::TrapContext;
 global_asm!(include_str!("trap.S"));
 
 pub fn init(){
