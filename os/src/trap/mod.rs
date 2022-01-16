@@ -1,46 +1,64 @@
-use riscv::register::{mtvec::TrapMode, scause::{self, Exception, Trap}, stval, stvec, sie};
+mod context;
+
+use riscv::register::{
+    mtvec::TrapMode,
+    stvec,
+    scause::{
+        self,
+        Trap,
+        Exception,
+        Interrupt,
+    },
+    stval,
+    sie,
+};
 use crate::syscall::syscall;
 use crate::task::{
     exit_current_and_run_next,
     suspend_current_and_run_next,
 };
+use crate::timer::set_next_trigger;
 
-mod context;
-
-pub use self::context::TrapContext;
 global_asm!(include_str!("trap.S"));
 
-pub fn init(){
-    extern "C" {fn __alltraps();}
+pub fn init() {
+    extern "C" { fn __alltraps(); }
     unsafe {
-        stvec::write(__alltraps as usize, TrapMode::Direct); // set the entry for trap handler
+        stvec::write(__alltraps as usize, TrapMode::Direct);
     }
+}
+
+pub fn enable_timer_interrupt() {
+    unsafe { sie::set_stimer(); }
 }
 
 #[no_mangle]
-pub fn trap_handler(ctx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read();
     let stval = stval::read();
-    // println!("{:?}", scause.cause());
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
-            ctx.sepc += 4; // add bytecode length to point to ecall's next instruction
-            ctx.x[10] = syscall(ctx.x[17], [ctx.x[10], ctx.x[11], ctx.x[12]]) as usize; // a0-a2
+            cx.sepc += 4;
+            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
-        // handle other Exception
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] PageFault in application, core dumped.");
-            run_next_app();
+            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
+            exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, core dumped.");
-            run_next_app();
+            exit_current_and_run_next();
+        }
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            set_next_trigger();
+            suspend_current_and_run_next();
         }
         _ => {
-            println!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
-            run_next_app();
+            panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
         }
     }
-    ctx
+    cx
 }
+
+pub use context::TrapContext;
