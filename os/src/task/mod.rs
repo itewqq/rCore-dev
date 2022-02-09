@@ -1,7 +1,7 @@
 mod context;
 mod switch;
 mod task;
-mod scheduler;
+pub mod scheduler;
 
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
@@ -10,7 +10,7 @@ use alloc::boxed::Box;
 use lazy_static::*;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
-use scheduler::{BIG_STRIDE, Stride, StrideScheduler};
+use scheduler::{BIG_STRIDE, StrideScheduler};
 
 pub use context::TaskContext;
 
@@ -59,7 +59,8 @@ lazy_static! {
 impl TaskManager {
     fn run_first_task(&self) -> ! {
         let mut inner = self.inner.exclusive_access();
-        let task0 = &mut inner.tasks[0];
+        let next = inner.scheduler.find_next_task().unwrap();// let it panic or not
+        let task0 = &mut inner.tasks[next];
         task0.task_status = TaskStatus::Running;
         let next_task_cx_ptr = &task0.task_cx as *const TaskContext;
         drop(inner);
@@ -172,6 +173,7 @@ pub fn exit_current_and_run_next() {
     run_next_task();
 }
 
+#[allow(unused)]
 pub fn heap_test(){
     use alloc::collections::BinaryHeap;
     let mut heap = BinaryHeap::new();

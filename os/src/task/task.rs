@@ -1,5 +1,4 @@
 use super::TaskContext;
-use super::scheduler::Stride;
 
 #[derive(Copy, Clone)]
 pub struct TaskControlBlock {

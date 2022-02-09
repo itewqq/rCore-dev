@@ -21,7 +21,7 @@ impl Stride {
 
 impl Ord for Stride {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.pass.cmp(&other.pass)
+        self.pass.cmp(&other.pass).reverse()
     }
 }
 
@@ -62,4 +62,16 @@ impl StrideScheduler {
             None
         }
     }
+}
+
+#[allow(unused)]
+pub fn scheduler_order_test() {
+    let mut strid_sched = StrideScheduler::new();
+    strid_sched.insert_task(0, 100);
+    strid_sched.insert_task(1, 200);
+    strid_sched.insert_task(2, 300);
+    assert_eq!(strid_sched.find_next_task(), Some(0));
+    assert_eq!(strid_sched.find_next_task(), Some(1));
+    assert_eq!(strid_sched.find_next_task(), Some(2));
+    println!("Stride test passed!");
 }
