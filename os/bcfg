@@ -1,3 +1,2 @@
-break *0x80400000
-break *0x80400082
-break *0x8020080c
+break rust_main
+break *0x8020011c

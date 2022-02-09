@@ -1,11 +1,10 @@
 #![no_std]
 #![no_main]
 #![allow(dead_code)]
-#![feature(asm)]
-#![feature(global_asm)]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
+use core::arch::global_asm;
 extern crate alloc;
 
 #[macro_use]

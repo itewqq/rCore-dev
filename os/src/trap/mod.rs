@@ -18,6 +18,7 @@ use crate::task::{
     suspend_current_and_run_next,
 };
 use crate::timer::set_next_trigger;
+use core::arch::global_asm;
 
 global_asm!(include_str!("trap.S"));
 
@@ -43,11 +44,11 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
+            error!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
             exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[kernel] IllegalInstruction in application, core dumped.");
+            error!("[kernel] IllegalInstruction at 0x{:x?} in application, core dumped.", cx.sepc);
             exit_current_and_run_next();
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {

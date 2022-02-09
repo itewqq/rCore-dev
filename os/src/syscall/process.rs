@@ -23,12 +23,12 @@ pub fn sys_yield() -> isize {
     0
 }
 
-pub fn sys_set_priority(prio: isize) -> isize {
-    if prio < 2 {
+pub fn sys_set_priority(prio: usize) -> isize {
+    if (prio as isize) < 2 {
         -1
     } else{
-        set_current_prio(prio as usize);
-        prio
+        set_current_prio(prio);
+        prio as isize
     }
 }
 
