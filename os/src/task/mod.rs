@@ -1,13 +1,16 @@
 mod context;
 mod switch;
 mod task;
+mod scheduler;
 
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
+use crate::sync::UPSafeCell;
+use alloc::boxed::Box;
 use lazy_static::*;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
-use crate::sync::UPSafeCell;
+use scheduler::{BIG_STRIDE, Stride, StrideScheduler};
 
 pub use context::TaskContext;
 
@@ -19,27 +22,35 @@ pub struct TaskManager {
 struct TaskManagerInner {
     tasks: [TaskControlBlock; MAX_APP_NUM],
     current_task: usize,
+    scheduler: Box<StrideScheduler>,
 }
 
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
+        let mut stride_scheduler: StrideScheduler = StrideScheduler::new();
         let mut tasks = [
             TaskControlBlock {
+                id: 0,
                 task_cx: TaskContext::zero_init(),
-                task_status: TaskStatus::UnInit
+                task_status: TaskStatus::UnInit,
+                priority: 16,
+                pass: 0,
             };
             MAX_APP_NUM
         ];
         for i in 0..num_app {
+            tasks[i].id = i;
             tasks[i].task_cx = TaskContext::goto_restore(init_app_cx(i));
             tasks[i].task_status = TaskStatus::Ready;
+            stride_scheduler.create_task(i);
         }
         TaskManager {
             num_app,
             inner: unsafe { UPSafeCell::new(TaskManagerInner {
                 tasks,
                 current_task: 0,
+                scheduler: Box::new(stride_scheduler),
             })},
         }
     };
@@ -76,19 +87,33 @@ impl TaskManager {
     }
 
     fn find_next_task(&self) -> Option<usize> {
-        let inner = self.inner.exclusive_access();
-        let current = inner.current_task;
-        (current + 1..current + self.num_app + 1)
-            .map(|id| id % self.num_app)
-            .find(|id| {
-                inner.tasks[*id].task_status == TaskStatus::Ready
-            })
+        let mut inner = self.inner.exclusive_access();
+        loop {
+            let next = inner.scheduler.find_next_task();
+            if let Some(id) = next {
+                if inner.tasks[id].task_status == TaskStatus::Ready {
+                    return next;
+                }else {
+                    continue; // no ready so removed? 
+                }
+            }else {
+                return None;
+            }
+        }
+        // (current + 1..current + self.num_app + 1)
+        //     .map(|id| id % self.num_app)
+        //     .find(|id| {
+        //         inner.tasks[*id].task_status == TaskStatus::Ready
+        //     })
     }
 
     fn run_next_task(&self) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].pass += BIG_STRIDE / inner.tasks[current].priority;
+        let current_pass = inner.tasks[current].pass;
+        inner.scheduler.insert_task(current, current_pass);
         if let Some(next) = self.find_next_task() {
-            let mut inner = self.inner.exclusive_access();
-            let current = inner.current_task;
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
@@ -132,4 +157,17 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+pub fn heap_test(){
+    use alloc::collections::BinaryHeap;
+    let mut heap = BinaryHeap::new();
+    heap.push(1);
+    heap.push(5);
+    heap.push(2);
+    assert_eq!(heap.pop(), Some(5));
+    assert_eq!(heap.pop(), Some(2));
+    assert_eq!(heap.pop(), Some(1));
+    assert_eq!(heap.pop(), None);
+    debug!("heap test success!");
 }
