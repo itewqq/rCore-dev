@@ -113,7 +113,9 @@ impl TaskManager {
         inner.tasks[current].pass += BIG_STRIDE / inner.tasks[current].priority;
         let current_pass = inner.tasks[current].pass;
         inner.scheduler.insert_task(current, current_pass);
+        drop(inner);
         if let Some(next) = self.find_next_task() {
+            let mut inner = self.inner.exclusive_access();
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
@@ -131,6 +133,12 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    fn set_current_prio(&self, prio: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].priority = prio;
+    }
 }
 
 pub fn run_first_task() {
@@ -147,6 +155,11 @@ fn mark_current_suspended() {
 
 fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
+}
+
+pub fn set_current_prio(prio: usize) {
+    let prio = if prio < BIG_STRIDE {prio} else {BIG_STRIDE};
+    TASK_MANAGER.set_current_prio(prio);
 }
 
 pub fn suspend_current_and_run_next() {

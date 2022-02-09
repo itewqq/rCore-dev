@@ -4,6 +4,9 @@
 #![feature(asm)]
 #![feature(global_asm)]
 #![feature(panic_info_message)]
+#![feature(alloc_error_handler)]
+
+extern crate alloc;
 
 #[macro_use]
 mod console;
@@ -16,6 +19,7 @@ mod sync;
 mod timer;
 mod config;
 mod loader;
+mod mm;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
@@ -44,6 +48,7 @@ pub fn rust_main() -> ! {
     }
     clear_bss();
     println!("[kernel] Hello, world!");
+    mm::init();
     trap::init();
     loader::load_apps();
     trap::enable_timer_interrupt();
