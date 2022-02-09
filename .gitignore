@@ -4,6 +4,7 @@ os/src/link_app.S
 os/.gdb_history
 os/.gdbinit
 os/Cargo.lock
+user/build/*
 user/target/*
 user/.vscode/*
 user/Cargo.lock
