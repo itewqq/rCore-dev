@@ -2,6 +2,7 @@ use super::address::{PhysPageNum, VirtPageNum};
 use super::frame_allocator::{FrameTracker, frame_alloc};
 
 use bitflags::*;
+use alloc::vec;
 use alloc::vec::Vec;
 
 bitflags! {
@@ -59,6 +60,29 @@ pub struct PageTable {
 
 
 impl PageTable {
+    pub fn new() -> Self {
+        let frame = frame_alloc().unwrap();
+        Self {
+            root_ppn: frame.ppn,
+            frames: vec![frame],
+        }
+    }
+
+    pub fn token(&self) -> usize {
+        self.root_ppn.0 & ( (1usize<<64) - 1)
+    }
+    
+    pub fn from_token(satp: usize) -> Self {
+        Self {
+            root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
+            frames: Vec::new(),
+        }
+    }
+
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
+        self.find_pte(vpn)
+            .map(|pte| {pte.clone()})
+    }
 
     fn find_pte_create(&mut self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
         let idxs = vpn.indexes();
@@ -108,18 +132,6 @@ impl PageTable {
         let pte = self.find_pte(vpn).unwrap();
         assert!(pte.is_valid(), "vpn {:?} is invalid before unmapping", vpn);
         *pte = PageTableEntry::empty();
-    }
-    
-    pub fn from_token(satp: usize) -> Self {
-        Self {
-            root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
-            frames: Vec::new(),
-        }
-    }
-
-    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
-        self.find_pte(vpn)
-            .map(|pte| {pte.clone()})
     }
 }
 
