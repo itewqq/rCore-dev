@@ -1,4 +1,3 @@
-use riscv::addr::Frame;
 use core::fmt::{self, Debug, Formatter};
 use alloc::vec::Vec;
 use lazy_static::*;
