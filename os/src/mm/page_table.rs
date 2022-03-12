@@ -1,5 +1,6 @@
-use super::address::{PhysPageNum, VirtPageNum};
+use super::address::{PhysPageNum, VirtPageNum, VirtAddr};
 use super::frame_allocator::{FrameTracker, frame_alloc};
+use super::address::StepByOne;
 
 use bitflags::*;
 use alloc::vec;
@@ -135,3 +136,24 @@ impl PageTable {
     }
 }
 
+pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+    let page_table = PageTable::from_token(token);
+    let mut start = ptr as usize;
+    let end = start + len;
+    let mut v = Vec::new();
+    while start < end {
+        let start_va = VirtAddr::from(start);
+        let mut vpn = start_va.floor();
+        let ppn = page_table.translate(vpn).unwrap().ppn();
+        vpn.step();
+        let mut end_va: VirtAddr = vpn.into();
+        end_va = end_va.min(VirtAddr::from(end));
+        if end_va.page_offset() == 0 {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..]);
+        } else {
+            v.push(&mut ppn.get_bytes_array()[start_va.page_offset()..end_va.page_offset()]);
+        }
+        start = end_va.into();
+    }
+    v
+}

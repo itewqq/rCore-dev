@@ -36,23 +36,12 @@ fn clear_bss() {
 
 #[no_mangle]
 pub fn rust_main() -> ! {
-    extern "C" {
-        fn stext();
-        fn etext();
-        fn srodata();
-        fn erodata();
-        fn sdata();
-        fn edata();
-        fn sbss();
-        fn ebss();
-        fn boot_stack();
-        fn boot_stack_top();
-    }
     clear_bss();
     println!("[kernel] Hello, world!");
     mm::init();
+    println!("[kernel] back to world!");
     trap::init();
-    loader::load_apps();
+    // loader::load_apps();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     task::run_first_task();

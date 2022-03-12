@@ -1,13 +1,18 @@
 use alloc::{collections::BTreeMap};
+use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::arch::asm;
+use riscv::register::satp;
+use crate::sync::UPSafeCell;
+use lazy_static::*;
 
 use crate::config::{PAGE_SIZE, MEMORY_END, USER_STACK_SIZE, TRAMPOLINE, TRAP_CONTEXT};
 use super::address::PhysPageNum;
 use super::frame_allocator::frame_alloc;
 use super::{
-    address::{VirtAddr, VPNRange, VirtPageNum, StepByOne}, 
+    address::{VirtAddr, VPNRange, VirtPageNum, PhysAddr, StepByOne}, 
     frame_allocator::FrameTracker,
-    page_table::{PageTable, PTEFlags},
+    page_table::{PageTable, PTEFlags, PageTableEntry},
 };
 
 extern "C" {
@@ -139,6 +144,18 @@ impl MemorySet {
         self.page_table.token()
     }
 
+    pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
+        self.page_table.translate(vpn)
+    }
+
+    pub fn activate(&self) {
+        let satp = self.page_table.token();
+        unsafe {
+            satp::write(satp);
+            asm!("sfence.vma");
+        }
+    }
+
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
@@ -147,8 +164,25 @@ impl MemorySet {
         self.areas.push(map_area);
     }
 
+    /// Assume that no conflicts.
+    pub fn insert_framed_area(
+        &mut self,
+        start_va: VirtAddr,
+        end_va: VirtAddr,
+        permission: MapPermission,
+    ) {
+        self.push(
+            MapArea::new(start_va, end_va, MapType::Framed, permission),
+            None,
+        );
+    }
+
     fn map_trampoline(&mut self) {
-        unimplemented!()
+        self.page_table.map(
+            VirtAddr::from(TRAMPOLINE).into(),
+            PhysAddr::from(strampoline as usize).into(),
+            PTEFlags::R | PTEFlags::X,
+        );
     }
 
     pub fn new_kernel() -> Self {
@@ -280,4 +314,40 @@ impl MemorySet {
             elf.header.pt2.entry_point() as usize,
         )
     }
+}
+
+lazy_static! {
+    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> = Arc::new(unsafe {
+        UPSafeCell::new(MemorySet::new_kernel()
+    )});
+}
+
+#[allow(unused)]
+pub fn remap_test() {
+    let mut kernel_space = KERNEL_SPACE.exclusive_access();
+    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
+    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
+    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
+    assert!(
+        !kernel_space
+            .page_table
+            .translate(mid_text.floor())
+            .unwrap()
+            .writable(),
+    );
+    assert!(
+        !kernel_space
+            .page_table
+            .translate(mid_rodata.floor())
+            .unwrap()
+            .writable(),
+    );
+    assert!(
+        !kernel_space
+            .page_table
+            .translate(mid_data.floor())
+            .unwrap()
+            .executable(),
+    );
+    println!("remap_test passed!");
 }
