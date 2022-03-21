@@ -70,7 +70,7 @@ impl PageTable {
     }
 
     pub fn token(&self) -> usize {
-        self.root_ppn.0 & ( (1usize<<64) - 1)
+        8usize << 60 | self.root_ppn.0
     }
     
     pub fn from_token(satp: usize) -> Self {
@@ -112,6 +112,7 @@ impl PageTable {
         for i in 0..3 {
             let pte = &mut ppn.get_pte_array()[idxs[i]];
             if !pte.is_valid() {
+                debug!("{:#?} is none", vpn);
                 return None;
             }
             if i == 2 {

@@ -4,6 +4,8 @@
 #[macro_use]
 extern crate user_lib;
 
+use core::fmt::Debug;
+
 use user_lib::{get_time, yield_};
 
 /// 正确输出：（无报错信息）
@@ -12,6 +14,7 @@ use user_lib::{get_time, yield_};
 
 #[no_mangle]
 fn main() -> i32 {
+    debug!("Got user space");
     let current_time = get_time();
     assert!(current_time > 0);
     println!("get_time OK! {}", current_time);

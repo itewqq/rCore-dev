@@ -2,6 +2,7 @@ use alloc::{collections::BTreeMap};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::arch::asm;
+use core::result::Result;
 use riscv::register::satp;
 use crate::sync::UPSafeCell;
 use lazy_static::*;
@@ -29,7 +30,7 @@ extern "C" {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum MapType {
+pub enum MapType {
     Identical,
     Framed,
 }
@@ -66,13 +67,22 @@ impl MapArea {
         }
     }
 
-    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) -> Result<(), &'static str > {
         let ppn: PhysPageNum;
         match self.map_type {
             MapType::Framed => {
-                let frame = frame_alloc().unwrap();
-                ppn = frame.ppn;
-                self.data_frames.insert(vpn, frame);
+                let frame = frame_alloc();
+                // handle 
+                match frame {
+                    Some(frame) => {
+                        ppn = frame.ppn;
+                        self.data_frames.insert(vpn, frame);
+                    },
+                    None => {
+                        return Err("No enough physical space");
+                    }
+                }
+                
             }
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);
@@ -80,6 +90,7 @@ impl MapArea {
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
         page_table.map(vpn, ppn, pte_flags);
+        Ok(())
     }
 
     #[allow(unused)]
@@ -90,10 +101,14 @@ impl MapArea {
         page_table.unmap(vpn);
     }
 
-    pub fn map(&mut self, page_table: &mut PageTable) {
+    pub fn map(&mut self, page_table: &mut PageTable) -> Result<(), &'static str > {
         for vpn in self.vpn_range {
-            self.map_one(page_table, vpn);
+            match self.map_one(page_table, vpn) {
+                Ok(_) => { continue;},
+                Err(e) => {return Err(e);},
+            };
         }
+        Ok(())
     }
 
     #[allow(unused)]
@@ -156,12 +171,42 @@ impl MemorySet {
         }
     }
 
-    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        map_area.map(&mut self.page_table);
-        if let Some(data) = data {
-            map_area.copy_data(&mut self.page_table, data);
+    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) -> Result<(), &'static str > {
+        match map_area.map(&mut self.page_table) {
+            Ok(_) => {
+                if let Some(data) = data {
+                    map_area.copy_data(&mut self.page_table, data);
+                }
+                self.areas.push(map_area);
+            },
+            Err(e) => {
+                return Err(e);
+            }
         }
-        self.areas.push(map_area);
+        Ok(())
+    }
+
+    // TODO improve bruteforce munmap
+    pub fn remove_mapped_frames(&mut self, start_va: VirtAddr, end_va: VirtAddr) -> isize {
+        // make sure the vpn is belong to current MemorySet
+        for vpn in VPNRange::new(start_va.floor(), end_va.ceil()) {
+            if let None = self.areas.iter()
+            .position(|area| area.data_frames.contains_key(&vpn)) {
+                return -1;
+            }
+        }
+        // drop the MapAreas in a bruteforce way
+        for vpn in VPNRange::new(start_va.floor(), end_va.ceil())  {
+            let index = self.areas.iter()
+                .position(|area| area.data_frames.contains_key(&vpn)).unwrap();
+            debug!("Removing vpn {:#?} ", vpn);
+            self.areas[index].unmap_one(&mut self.page_table, vpn);
+            self.areas[index].data_frames.remove(&vpn);
+            if self.areas[index].data_frames.is_empty() {
+                self.areas.remove(index);
+            }
+        }
+        0
     }
 
     /// Assume that no conflicts.
@@ -170,13 +215,14 @@ impl MemorySet {
         start_va: VirtAddr,
         end_va: VirtAddr,
         permission: MapPermission,
-    ) {
+    ) -> Result<(), &'static str > {
         self.push(
             MapArea::new(start_va, end_va, MapType::Framed, permission),
             None,
-        );
+        )
     }
 
+    // assume that space is enough
     fn map_trampoline(&mut self) {
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
@@ -202,7 +248,7 @@ impl MemorySet {
                 MapPermission::R | MapPermission::X,
             ),
             None,
-        );
+        ).unwrap();
         debug!("mapping .rodata section");
         memory_set.push(
             MapArea::new(
@@ -212,7 +258,7 @@ impl MemorySet {
                 MapPermission::R,
             ),
             None,
-        );
+        ).unwrap();
         debug!("mapping .data section");
         memory_set.push(
             MapArea::new(
@@ -222,7 +268,7 @@ impl MemorySet {
                 MapPermission::R | MapPermission::W,
             ),
             None,
-        );
+        ).unwrap();
         debug!("mapping .bss section");
         memory_set.push(
             MapArea::new(
@@ -232,7 +278,7 @@ impl MemorySet {
                 MapPermission::R | MapPermission::W,
             ),
             None,
-        );
+        ).unwrap();
         // Physical memory identical map
         debug!("mapping physical memory");
         memory_set.push(
@@ -243,7 +289,7 @@ impl MemorySet {
                 MapPermission::R | MapPermission::W,
             ),
             None,
-        );
+        ).unwrap();
         memory_set
     }
     // Include sections in elf, set trampoline and TrapContext and user stack,
@@ -280,7 +326,7 @@ impl MemorySet {
                 memory_set.push(
                     map_area,
                     Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize]),
-                );
+                ).unwrap();
             }
         }
         // map user stack with U flags
@@ -297,7 +343,7 @@ impl MemorySet {
                 MapPermission::R | MapPermission::W | MapPermission::U,
             ),
             None,
-        );
+        ).unwrap();
         // map TrapContext
         memory_set.push(
             MapArea::new(
@@ -307,7 +353,7 @@ impl MemorySet {
                 MapPermission::R | MapPermission::W,
             ),
             None,
-        );
+        ).unwrap();
         (
             memory_set,
             user_stack_top,

@@ -45,7 +45,7 @@ impl TaskControlBlock {
             kernel_stack_bottom.into(),
             kernel_stack_top.into(),
             MapPermission::R | MapPermission::W,
-        );
+        ).unwrap();
         let task_control_block = Self {
             id: app_id,
             task_status,

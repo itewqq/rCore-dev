@@ -4,6 +4,7 @@ mod task;
 pub mod scheduler;
 
 use crate::loader::{get_num_app};
+use crate::mm::{MapPermission, VirtPageNum, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use crate::loader::get_app_data;
@@ -133,6 +134,23 @@ impl TaskManager {
         inner.tasks[inner.current_task].get_trap_cx()
     }
 
+    fn get_current_id(&self) -> usize {
+        let inner = self.inner.exclusive_access();
+        inner.current_task
+    }
+
+    fn current_memory_set_mmap(&self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) -> Result<(), &'static str > {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].memory_set.insert_framed_area(start_va, end_va, permission)
+    }
+
+    fn current_memory_set_munmap(&self, start_va: VirtAddr, end_va: VirtAddr) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current_task = inner.current_task;
+        inner.tasks[current_task].memory_set.remove_mapped_frames(start_va, end_va)
+    }
+
     fn set_current_prio(&self, prio: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -177,6 +195,18 @@ pub fn current_user_token() -> usize {
 
 pub fn current_trap_cx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_cx()
+}
+
+pub fn current_id() -> usize {
+    TASK_MANAGER.get_current_id()
+}
+
+pub fn current_memory_set_mmap(start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) -> Result<(), &'static str > {
+    TASK_MANAGER.current_memory_set_mmap(start_va, end_va, permission)
+}
+
+pub fn current_memory_set_munmap(start_va: VirtAddr, end_va: VirtAddr) -> isize {
+    TASK_MANAGER.current_memory_set_munmap(start_va, end_va)
 }
 
 #[allow(unused)]

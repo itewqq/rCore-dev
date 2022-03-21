@@ -16,7 +16,7 @@ endif
 ELFS := $(patsubst $(APP_DIR)/%.rs, $(TARGET_DIR)/%, $(APPS))
 
 elf: $(APPS)
-	@python3 build.py
+	@cargo build --release
 
 binary: elf
 	@$(foreach elf, $(ELFS), \
