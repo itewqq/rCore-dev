@@ -27,7 +27,6 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
     // make sure there are no mapped pages in [start..start+len)
     for vpn in VPNRange::new(start_vpn, end_vpn) {
         if let Some(_) = page_table_user.translate(vpn) {
-            error!("Now error with task {}", current_id());
             return -1;
         }
     }
