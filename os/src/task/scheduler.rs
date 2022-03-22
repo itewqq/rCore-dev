@@ -73,5 +73,5 @@ pub fn scheduler_order_test() {
     assert_eq!(strid_sched.find_next_task(), Some(0));
     assert_eq!(strid_sched.find_next_task(), Some(1));
     assert_eq!(strid_sched.find_next_task(), Some(2));
-    println!("Stride test passed!");
+    debug!("Stride test passed!");
 }

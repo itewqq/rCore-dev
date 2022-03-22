@@ -199,7 +199,6 @@ impl MemorySet {
         for vpn in VPNRange::new(start_va.floor(), end_va.ceil())  {
             let index = self.areas.iter()
                 .position(|area| area.data_frames.contains_key(&vpn)).unwrap();
-            debug!("Removing vpn {:#?} ", vpn);
             self.areas[index].unmap_one(&mut self.page_table, vpn);
             self.areas[index].data_frames.remove(&vpn);
             if self.areas[index].data_frames.is_empty() {
@@ -235,11 +234,11 @@ impl MemorySet {
         let mut memory_set = Self::new_bare();
         memory_set.map_trampoline();
         // map kernel sections
-        info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        info!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        debug!("mapping .text section");
+        kprintln!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+        kprintln!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+        kprintln!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+        kprintln!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
+        kprintln!("mapping .text section");
         memory_set.push(
             MapArea::new(
                 (stext as usize).into(),
@@ -249,7 +248,7 @@ impl MemorySet {
             ),
             None,
         ).unwrap();
-        debug!("mapping .rodata section");
+        kprintln!("mapping .rodata section");
         memory_set.push(
             MapArea::new(
                 (srodata as usize).into(),
@@ -259,7 +258,7 @@ impl MemorySet {
             ),
             None,
         ).unwrap();
-        debug!("mapping .data section");
+        kprintln!("mapping .data section");
         memory_set.push(
             MapArea::new(
                 (sdata as usize).into(),
@@ -269,7 +268,7 @@ impl MemorySet {
             ),
             None,
         ).unwrap();
-        debug!("mapping .bss section");
+        kprintln!("mapping .bss section");
         memory_set.push(
             MapArea::new(
                 (sbss_with_stack as usize).into(),
@@ -280,7 +279,7 @@ impl MemorySet {
             None,
         ).unwrap();
         // Physical memory identical map
-        debug!("mapping physical memory");
+        kprintln!("mapping physical memory");
         memory_set.push(
             MapArea::new(
                 (ekernel as usize).into(),
@@ -395,5 +394,5 @@ pub fn remap_test() {
             .unwrap()
             .executable(),
     );
-    println!("remap_test passed!");
+    debug!("remap_test passed!");
 }

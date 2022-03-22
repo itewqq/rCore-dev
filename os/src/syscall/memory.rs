@@ -32,13 +32,11 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
     let page_table_user = PageTable::from_token(current_user_token());
     // make sure there are no mapped pages in [start..start+len)
     for vpn in VPNRange::new(start_vpn, end_vpn) {
-        debug!("Now find {:#?} start", vpn);
         if let Some(_) = page_table_user.translate(vpn) {
             error!("Now error with task {}", current_id());
             return -1;
         }
     }
-    debug!("mmap current task id {}, current_user_token: {:x}, start {:x}, len {}", current_id(), page_table_user.token(), start, len);
     let mut map_perm = MapPermission::U;
     if (prot & 0x1) != 0 {
         map_perm |= MapPermission::R;
@@ -72,7 +70,6 @@ pub fn sys_munmap(start: usize, len: usize) -> isize {
     let end_vpn =  VirtAddr::from(start + len).ceil();
 
     let page_table_user = PageTable::from_token(current_user_token());
-    debug!("munmap current task id {}, current_user_token: {:x}, start {:x}, len {}", current_id(), page_table_user.token(), start, len);
     // make sure there are no unmapped pages in [start..start+len)
     for vpn in VPNRange::new(start_vpn, end_vpn) {
         if let None = page_table_user.translate(vpn) {

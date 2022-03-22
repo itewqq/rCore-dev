@@ -37,13 +37,13 @@ fn clear_bss() {
 #[no_mangle]
 pub fn rust_main() -> ! {
     clear_bss();
-    println!("[kernel] Hello, world!");
+    kprintln!("Hello, world!");
     mm::init();
-    println!("[kernel] back to world!");
+    kprintln!("back to world!");
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    println!("[kernel run first task");
+    kprintln!("run first task");
     task::run_first_task();
     panic!("Unreachable in rust_main!");
 }

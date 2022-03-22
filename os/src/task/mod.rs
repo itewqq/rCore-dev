@@ -30,9 +30,9 @@ struct TaskManagerInner {
 
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
-        println!("init TASK_MANAGER");
+        kprintln!("init TASK_MANAGER");
         let num_app = get_num_app();
-        println!("num_app = {}", num_app);
+        kprintln!("num_app = {}", num_app);
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
         let mut stride_scheduler: StrideScheduler = StrideScheduler::new();
         for i in 0..num_app {

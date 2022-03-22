@@ -112,7 +112,6 @@ impl PageTable {
         for i in 0..3 {
             let pte = &mut ppn.get_pte_array()[idxs[i]];
             if !pte.is_valid() {
-                debug!("{:#?} is none", vpn);
                 return None;
             }
             if i == 2 {
@@ -137,7 +136,7 @@ impl PageTable {
     }
 }
 
-pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+pub fn translated_byte_buffers(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);
     let mut start = ptr as usize;
     let end = start + len;
