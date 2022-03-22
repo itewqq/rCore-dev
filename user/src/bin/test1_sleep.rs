@@ -4,8 +4,6 @@
 #[macro_use]
 extern crate user_lib;
 
-use core::fmt::Debug;
-
 use user_lib::{get_time, yield_};
 
 /// 正确输出：（无报错信息）
