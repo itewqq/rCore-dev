@@ -1,14 +1,8 @@
 use crate::config::PAGE_SIZE;
 use crate::mm::{
-    frame_alloc,
-    MapType, 
-    MapArea, 
-    PageTable, 
-    VirtPageNum, 
+    PageTable,
     VirtAddr, 
-    MapPermission, 
-    PTEFlags, PhysPageNum,
-    StepByOne,
+    MapPermission,
     VPNRange,
 };
 use crate::task::{

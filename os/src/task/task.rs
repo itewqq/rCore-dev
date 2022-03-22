@@ -1,4 +1,4 @@
-use crate::mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE, VirtPageNum};
+use crate::mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::config::{kernel_stack_position, TRAP_CONTEXT};
 use crate::trap::{TrapContext, trap_handler};
 

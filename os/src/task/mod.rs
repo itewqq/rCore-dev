@@ -4,7 +4,7 @@ mod task;
 pub mod scheduler;
 
 use crate::loader::{get_num_app};
-use crate::mm::{MapPermission, VirtPageNum, VirtAddr};
+use crate::mm::{MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use crate::loader::get_app_data;

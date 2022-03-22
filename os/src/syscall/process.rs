@@ -7,7 +7,7 @@ use crate::task::{
     current_user_token,
     current_id,
 };
-use crate::mm::{PageTable, translated_byte_buffers, VirtPageNum, VirtAddr, PhysAddr};
+use crate::mm::{translated_byte_buffers};
 use crate::timer::get_time_us;
 
 #[repr(C)]
