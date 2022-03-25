@@ -12,9 +12,7 @@ use user_lib::{get_time, yield_};
 
 #[no_mangle]
 fn main() -> i32 {
-    debug!("Got user space");
     let current_time = get_time();
-    debug!("Got current time {}", current_time);
     assert!(current_time > 0);
     println!("get_time OK! {}", current_time);
     let wait_for = current_time + 3000;
