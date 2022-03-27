@@ -1,6 +1,7 @@
 mod context;
 mod switch;
 mod task;
+mod pid;
 pub mod scheduler;
 
 use crate::loader::{get_num_app};

@@ -8,6 +8,7 @@ use user_lib::{get_time, sleep};
 
 #[no_mangle]
 pub fn main() -> i32 {
+    println!("into sleep test!");
     let start = get_time();
     println!("current time_msec = {}", start);
     sleep(100);
@@ -17,6 +18,6 @@ pub fn main() -> i32 {
         end,
         end - start
     );
-    println!("Test sleep1 passed!");
+    println!("r_sleep passed!");
     0
 }

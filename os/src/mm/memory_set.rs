@@ -186,6 +186,18 @@ impl MemorySet {
         Ok(())
     }
 
+    pub fn remove_area_with_start_vpn(&mut self, start_vpn: VirtPageNum) {
+        if let Some((idx, area)) = self
+            .areas
+            .iter_mut()
+            .enumerate()
+            .find(|(_, area)| area.vpn_range.get_start() == start_vpn)
+        {
+            area.unmap(&mut self.page_table);
+            self.areas.remove(idx);
+        }
+    }
+
     // TODO improve bruteforce munmap
     pub fn remove_mapped_frames(&mut self, start_va: VirtAddr, end_va: VirtAddr) -> isize {
         // make sure the vpn is belong to current MemorySet
