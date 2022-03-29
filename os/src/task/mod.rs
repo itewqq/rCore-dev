@@ -2,7 +2,9 @@ mod context;
 mod switch;
 mod task;
 mod pid;
-pub mod scheduler;
+mod manager;
+mod scheduler;
+mod processor;
 
 use crate::loader::{get_num_app};
 use crate::mm::{MapPermission, VirtAddr};
@@ -15,6 +17,7 @@ use lazy_static::*;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 use scheduler::{BIG_STRIDE, StrideScheduler};
+use manager::{add_task, fetch_task};
 
 pub use context::TaskContext;
 
