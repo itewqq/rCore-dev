@@ -251,6 +251,10 @@ impl MemorySet {
         0
     }
 
+    pub fn recycle_data_pages(&mut self) {
+        self.areas.clear();
+    }
+
     /// Assume that no conflicts.
     pub fn insert_framed_area(
         &mut self,

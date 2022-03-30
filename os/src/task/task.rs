@@ -20,6 +20,7 @@ pub enum TaskStatus {
     UnInit,
     Ready,
     Running,
+    Zombie,
     Exited,
 }
 
@@ -55,6 +56,10 @@ impl TaskControlBlockInner {
 
     pub fn get_status(&self) -> TaskStatus {
         self.task_status
+    }
+
+    pub fn is_zombie(&self) -> bool {
+        self.task_status == TaskStatus::Zombie
     }
 }
 

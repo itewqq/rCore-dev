@@ -21,7 +21,7 @@ use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 use scheduler::{BIG_STRIDE, StrideScheduler};
 pub use manager::{add_task, fetch_task};
-pub use processor::{take_current_task, current_task, current_user_token, schedule};
+pub use processor::{take_current_task, current_task, current_user_token, current_trap_cx, schedule};
 
 pub use context::TaskContext;
 
@@ -59,6 +59,34 @@ pub fn suspend_current_and_run_next() {
     schedule(task_cx_ptr);
 }
 
+pub fn exit_current_and_run_next(exit_code: i32) {
+    // take from processor
+    let task = take_current_task().unwrap();
+    // access current TCB exclusively
+    let mut inner = task.inner_exclusive_access();
+    // change status to Zombie
+    inner.task_status = TaskStatus::Zombie;
+    // record exit code
+    inner.exit_code = exit_code;
+    // initproc collects children
+    {
+        let mut initproc_inner = INITPROC.inner_exclusive_access();
+        for child in inner.children.iter() {
+            child.inner_exclusive_access().parent = Some(Arc::downgrade(&INITPROC));
+            initproc_inner.children.push(child.clone());
+        }
+    }
+    inner.children.clear();
+    // dealloc memory in user space, 
+    // but the page table in phys memory still here and will be recycled by parent with sys_waitpid
+    inner.memory_set.recycle_data_pages();
+    drop(inner);
+    // drop task, so there is only one ref to it in it's parent
+    drop(task);
+    // No task context
+    let mut _unused = TaskContext::zero_init();
+    schedule(&mut _unused as *mut _);
+}
 
 #[allow(unused)]
 pub fn heap_test(){
