@@ -48,6 +48,10 @@ impl Drop for PidHandle {
     }
 }
 
+pub fn pid_alloc() -> PidHandle {
+    PID_ALLOCATOR.exclusive_access().alloc()
+}
+
 pub fn kernel_stack_position(pid: usize) -> (usize, usize) {
     let top = TRAMPOLINE - pid * (KERNEL_STACK_SIZE + PAGE_SIZE);
     let bottom = top - KERNEL_STACK_SIZE;
@@ -59,7 +63,7 @@ pub struct KernelStack {
 }
 
 impl KernelStack {
-    pub fn new(pid: PidHandle) -> Self {
+    pub fn new(pid: &PidHandle) -> Self {
         let pid = pid.0;
         let (top, bottom) = kernel_stack_position(pid);
         if let Err(e) = KERNEL_SPACE.exclusive_access().insert_framed_area(bottom.into(), top.into(), MapPermission::R | MapPermission:: W){

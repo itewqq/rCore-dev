@@ -1,11 +1,9 @@
 use core::mem::size_of;
 
 use crate::task::{
+    current_task,
+    add_task,
     suspend_current_and_run_next,
-    exit_current_and_run_next,
-    set_current_prio,
-    current_user_token,
-    current_id,
 };
 use crate::mm::{translated_byte_buffers};
 use crate::timer::get_time_us;
@@ -53,4 +51,17 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
         };
     }
     0
+}
+
+pub fn sys_fork() -> isize {
+    let current = current_task().unwrap();
+    let child_task = current.fork();
+    let child_pid = child_task.pid.0;
+    // modify return address in trap context
+    let trap_cx = child_task.inner_exclusive_access().get_trap_cx();
+    // return value of child is 0
+    trap_cx.x[10] = 0;  //x[10] is a0 reg
+    // add task to scheduler queue
+    add_task(child_task);
+    child_pid as isize
 }
