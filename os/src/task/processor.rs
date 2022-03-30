@@ -29,7 +29,7 @@ impl Processor {
         self.current.take()
     }
 
-    pub fn copy_current(self) -> Option<Arc<TaskControlBlock>> {
+    pub fn clone_current(self) -> Option<Arc<TaskControlBlock>> {
         self.current.as_ref().map(|task| task.clone())
     }
 
@@ -47,7 +47,7 @@ pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
 }
 
 pub fn current_task() -> Option<Arc<TaskControlBlock>> {
-    PROCESSOR.exclusive_access().copy_current()
+    PROCESSOR.exclusive_access().clone_current()
 }
 
 pub fn current_user_token() -> usize {

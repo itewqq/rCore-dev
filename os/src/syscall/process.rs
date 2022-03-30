@@ -2,10 +2,12 @@ use core::mem::size_of;
 
 use crate::task::{
     current_task,
+    current_user_token,
     add_task,
     suspend_current_and_run_next,
 };
-use crate::mm::{translated_byte_buffers};
+use crate::loader::get_app_data_by_name;
+use crate::mm::{translated_byte_buffers, translated_str};
 use crate::timer::get_time_us;
 
 #[repr(C)]
@@ -64,4 +66,16 @@ pub fn sys_fork() -> isize {
     // add task to scheduler queue
     add_task(child_task);
     child_pid as isize
+}
+
+pub fn sys_exec(path: *const u8) -> isize {
+    let token = current_user_token();
+    let path = translated_str(token, path);
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        let task = current_task().unwrap();
+        task.exec(data);
+        0
+    } else {
+        -1
+    }
 }

@@ -21,7 +21,7 @@ use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 use scheduler::{BIG_STRIDE, StrideScheduler};
 pub use manager::{add_task, fetch_task};
-pub use processor::{take_current_task, current_task, schedule};
+pub use processor::{take_current_task, current_task, current_user_token, schedule};
 
 pub use context::TaskContext;
 
