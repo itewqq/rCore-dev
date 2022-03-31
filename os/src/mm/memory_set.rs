@@ -172,7 +172,7 @@ impl MemorySet {
         // map trampoline
         memory_set.map_trampoline();
         // copy data from existed user space
-        for area in user_space.areas {
+        for area in user_space.areas.iter() {
             memory_set.push(
                 MapArea::from_another(&area),
                 None,

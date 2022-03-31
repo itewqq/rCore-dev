@@ -40,10 +40,12 @@ pub fn rust_main() -> ! {
     kprintln!("Hello, world!");
     mm::init();
     kprintln!("back to world!");
+    task::add_initproc();
+    kprintln!("after initproc!");
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    kprintln!("run first task");
-    task::run_first_task();
+    loader::list_apps();
+    task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

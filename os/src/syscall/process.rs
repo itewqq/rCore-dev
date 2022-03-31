@@ -4,6 +4,7 @@ use core::mem::size_of;
 use crate::task::{
     current_task,
     current_user_token,
+    set_current_prio,
     add_task,
     suspend_current_and_run_next,
     exit_current_and_run_next,

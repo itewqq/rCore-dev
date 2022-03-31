@@ -58,6 +58,10 @@ impl TaskControlBlockInner {
         self.task_status
     }
 
+    pub fn set_prio(&mut self, prio: usize) {
+        self.priority = prio;
+    }
+
     pub fn is_zombie(&self) -> bool {
         self.task_status == TaskStatus::Zombie
     }
@@ -117,12 +121,12 @@ impl TaskControlBlock {
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
         // substitute memory_set
-        let mut inner = self.inner_exclusive_access();
-        inner.memory_set = memory_set;
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
+        let mut inner = self.inner_exclusive_access();
+        inner.memory_set = memory_set;
         // update trap_cx ppn
         inner.trap_cx_ppn = trap_cx_ppn;
         // initialize trap_cx

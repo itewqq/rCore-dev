@@ -6,10 +6,10 @@ use crate::mm::{
     VPNRange,
 };
 use crate::task::{
+    current_pid,
     current_user_token, 
     current_memory_set_mmap, 
     current_memory_set_munmap,
-    current_id,
 };
 
 pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
@@ -47,7 +47,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
         map_perm) {
             Ok(_) => 0,
             Err(e) => {
-                error!("[Kernel]: mmap error {}, task id={}", e, current_id());
+                error!("[Kernel]: mmap error {}, task id={}", e, current_pid());
                 -1
             }
     }

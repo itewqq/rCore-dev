@@ -29,9 +29,10 @@ impl Processor {
         self.current.take()
     }
 
-    pub fn clone_current(self) -> Option<Arc<TaskControlBlock>> {
-        self.current.as_ref().map(|task| task.clone())
+    pub fn clone_current(&self) -> Option<Arc<TaskControlBlock>> {
+        self.current.as_ref().map(Arc::clone)
     }
+
 
     fn get_idle_task_cx_ptr(&mut self) -> *mut TaskContext {
         &mut self.idle_task_cx as *mut _
@@ -48,6 +49,10 @@ pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
 
 pub fn current_task() -> Option<Arc<TaskControlBlock>> {
     PROCESSOR.exclusive_access().clone_current()
+}
+
+pub fn current_pid() -> usize {
+    current_task().unwrap().getpid()
 }
 
 pub fn current_user_token() -> usize {

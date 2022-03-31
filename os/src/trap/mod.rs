@@ -85,6 +85,7 @@ pub fn trap_handler() -> ! {
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::LoadPageFault) |
         Trap::Exception(Exception::StorePageFault) => {
+            let cx = current_trap_cx();
             error!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
             exit_current_and_run_next(-2);
         }

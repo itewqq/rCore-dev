@@ -1,34 +1,37 @@
 mod context;
+mod manager;
+mod pid;
+mod processor;
+mod scheduler;
 mod switch;
 mod task;
-mod pid;
-mod manager;
-mod scheduler;
-mod processor;
 
-use crate::loader::{get_num_app};
+use crate::loader::get_app_data;
+use crate::loader::get_app_data_by_name;
+use crate::loader::get_num_app;
 use crate::mm::{MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
-use crate::loader::get_app_data;
-use crate::loader::get_app_data_by_name;
 
-use alloc::sync::Arc;
 use alloc::boxed::Box;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use lazy_static::*;
+pub use manager::{add_task, fetch_task};
+pub use processor::{
+    current_task, current_trap_cx, current_user_token, schedule, take_current_task, run_tasks,
+    current_pid,
+};
+use scheduler::{StrideScheduler, BIG_STRIDE};
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
-use scheduler::{BIG_STRIDE, StrideScheduler};
-pub use manager::{add_task, fetch_task};
-pub use processor::{take_current_task, current_task, current_user_token, current_trap_cx, schedule};
 
 pub use context::TaskContext;
 
 lazy_static! {
-    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(
-        TaskControlBlock::new(get_app_data_by_name("initproc").unwrap())
-    );
+    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(TaskControlBlock::new(
+        get_app_data_by_name("initproc").unwrap()
+    ));
 }
 
 pub struct TaskManager {
@@ -40,6 +43,10 @@ struct TaskManagerInner {
     tasks: Vec<TaskControlBlock>,
     current_task: usize,
     scheduler: Box<StrideScheduler>,
+}
+
+pub fn add_initproc() {
+    add_task(INITPROC.clone());
 }
 
 pub fn suspend_current_and_run_next() {
@@ -77,7 +84,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
         }
     }
     inner.children.clear();
-    // dealloc memory in user space, 
+    // dealloc memory in user space,
     // but the page table in phys memory still here and will be recycled by parent with sys_waitpid
     inner.memory_set.recycle_data_pages();
     drop(inner);
@@ -88,8 +95,24 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     schedule(&mut _unused as *mut _);
 }
 
+pub fn set_current_prio(prio: usize) {
+    current_task().unwrap().inner_exclusive_access().set_prio(prio);
+} 
+
+pub fn current_memory_set_mmap(start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) -> Result<(), &'static str > {
+    let task = current_task().unwrap();
+    let mut inner = task.inner_exclusive_access();
+    inner.memory_set.insert_framed_area(start_va, end_va, permission)
+}
+
+pub fn current_memory_set_munmap(start_va: VirtAddr, end_va: VirtAddr) -> isize {
+    let task = current_task().unwrap();
+    let mut inner = task.inner_exclusive_access();
+    inner.memory_set.remove_mapped_frames(start_va, end_va)
+}
+
 #[allow(unused)]
-pub fn heap_test(){
+pub fn heap_test() {
     use alloc::collections::BinaryHeap;
     let mut heap = BinaryHeap::new();
     heap.push(1);
