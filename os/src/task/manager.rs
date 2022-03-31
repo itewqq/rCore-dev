@@ -10,6 +10,7 @@ use crate::sync::UPSafeCell;
 use super::StrideScheduler;
 use super::TaskControlBlock;
 use super::pid::PidHandle;
+use super::scheduler::BIG_STRIDE;
 
 type Scheduler = StrideScheduler;
 
@@ -28,7 +29,11 @@ impl TaskManager {
     }
 
     pub fn add(&mut self, task: Arc<TaskControlBlock>) {
-        self.scheduler.insert_task(task.getpid(), 0);
+        // update pass for stride scheduler
+        let mut task_inner = task.inner_exclusive_access();
+        task_inner.pass += BIG_STRIDE / task_inner.priority;
+        drop(task_inner);
+        self.scheduler.insert_task(task.getpid(), task.clone().inner_exclusive_access().pass);
         self.ready_queue.insert(task.getpid(), task);
     }
 

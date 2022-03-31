@@ -68,6 +68,7 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
         .get_trap_cx()
 }
 
+// idle task
 pub fn run_tasks() {
     loop {
         let mut processor = PROCESSOR.exclusive_access();

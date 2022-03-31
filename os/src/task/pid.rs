@@ -65,7 +65,7 @@ pub struct KernelStack {
 impl KernelStack {
     pub fn new(pid: &PidHandle) -> Self {
         let pid = pid.0;
-        let (top, bottom) = kernel_stack_position(pid);
+        let (bottom, top) = kernel_stack_position(pid);
         if let Err(e) = KERNEL_SPACE.exclusive_access().insert_framed_area(bottom.into(), top.into(), MapPermission::R | MapPermission:: W){
             error!("Cannot allocate kernel stack for {}, {}", pid, e);
             return Self{ pid: usize::MAX, };
@@ -91,9 +91,10 @@ impl KernelStack {
 
 impl Drop for KernelStack {
     fn drop(&mut self) {
-        let (bottom_va, _) = kernel_stack_position(self.pid);
+        let (kernel_stack_bottom, _) = kernel_stack_position(self.pid);
+        let kernel_stack_bottom_va: VirtAddr = kernel_stack_bottom.into();
         KERNEL_SPACE
             .exclusive_access()
-            .remove_area_with_start_vpn(bottom_va.into());
+            .remove_area_with_start_vpn(kernel_stack_bottom_va.into());
     }
 }

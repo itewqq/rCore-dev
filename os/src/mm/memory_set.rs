@@ -262,6 +262,7 @@ impl MemorySet {
         end_va: VirtAddr,
         permission: MapPermission,
     ) -> Result<(), &'static str > {
+        debug!("1 {:#?} {:#?}", start_va, end_va);
         self.push(
             MapArea::new(start_va, end_va, MapType::Framed, permission),
             None,
