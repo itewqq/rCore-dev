@@ -1,5 +1,5 @@
-use crate::mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
-use crate::config::{kernel_stack_position, TRAP_CONTEXT};
+use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
+use crate::config::TRAP_CONTEXT;
 use crate::sync::UPSafeCell;
 use crate::trap::{TrapContext, trap_handler};
 

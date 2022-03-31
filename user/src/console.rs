@@ -47,6 +47,7 @@ pub fn print(args: fmt::Arguments) {
     // buf.write_fmt(args).unwrap();
     // BUG FIX: 关闭 stdout 后，本函数不能触发 panic，否则会造成死锁
     buf.write_fmt(args);
+    buf.flush();
 }
 
 #[macro_export]

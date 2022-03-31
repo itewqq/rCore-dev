@@ -37,14 +37,14 @@ fn clear_bss() {
 #[no_mangle]
 pub fn rust_main() -> ! {
     clear_bss();
-    kprintln!("Hello, world!");
     mm::init();
-    kprintln!("back to world!");
+    kprintln!("paging enabled");
     task::add_initproc();
-    kprintln!("after initproc!");
     trap::init();
+    kprintln!("all traps enabled");
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
+    kprintln!("timer trigger enabled");
     loader::list_apps();
     task::run_tasks();
     panic!("Unreachable in rust_main!");

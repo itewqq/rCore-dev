@@ -1,6 +1,5 @@
 use alloc::sync::Arc;
 use alloc::collections::{
-    VecDeque,
     BTreeMap,
 };
 use alloc::boxed::Box;
@@ -9,7 +8,6 @@ use lazy_static::*;
 use crate::sync::UPSafeCell;
 use super::StrideScheduler;
 use super::TaskControlBlock;
-use super::pid::PidHandle;
 use super::scheduler::BIG_STRIDE;
 
 type Scheduler = StrideScheduler;
@@ -21,7 +19,7 @@ pub struct TaskManager {
 
 impl TaskManager {
     pub fn new() -> Self {
-        let mut stride_scheduler: Scheduler = Scheduler::new();
+        let stride_scheduler: Scheduler = Scheduler::new();
         Self {
             ready_queue: BTreeMap::new(),
             scheduler: Box::new(stride_scheduler),

@@ -176,7 +176,7 @@ impl MemorySet {
             memory_set.push(
                 MapArea::from_another(&area),
                 None,
-            );
+            ).unwrap(); // TODO assume that memory sapce is enough
             for vpn in area.vpn_range {
                 let src_ppn = user_space.translate(vpn).unwrap().ppn();
                 let dst_ppn = memory_set.translate(vpn).unwrap().ppn();
@@ -262,7 +262,6 @@ impl MemorySet {
         end_va: VirtAddr,
         permission: MapPermission,
     ) -> Result<(), &'static str > {
-        debug!("1 {:#?} {:#?}", start_va, end_va);
         self.push(
             MapArea::new(start_va, end_va, MapType::Framed, permission),
             None,
@@ -282,11 +281,7 @@ impl MemorySet {
         let mut memory_set = Self::new_bare();
         memory_set.map_trampoline();
         // map kernel sections
-        kprintln!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-        kprintln!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-        kprintln!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-        kprintln!(".bss [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
-        kprintln!("mapping .text section");
+        info!("mapping .text section [{:#x}, {:#x})", stext as usize, etext as usize);
         memory_set.push(
             MapArea::new(
                 (stext as usize).into(),
@@ -296,7 +291,7 @@ impl MemorySet {
             ),
             None,
         ).unwrap();
-        kprintln!("mapping .rodata section");
+        info!("mapping .rodata section [{:#x}, {:#x})", srodata as usize, erodata as usize);
         memory_set.push(
             MapArea::new(
                 (srodata as usize).into(),
@@ -306,7 +301,7 @@ impl MemorySet {
             ),
             None,
         ).unwrap();
-        kprintln!("mapping .data section");
+        info!("mapping .data section [{:#x}, {:#x})", sdata as usize, edata as usize);
         memory_set.push(
             MapArea::new(
                 (sdata as usize).into(),
@@ -316,7 +311,7 @@ impl MemorySet {
             ),
             None,
         ).unwrap();
-        kprintln!("mapping .bss section");
+        info!("mapping .bss section [{:#x}, {:#x})", sbss_with_stack as usize, ebss as usize);
         memory_set.push(
             MapArea::new(
                 (sbss_with_stack as usize).into(),
@@ -327,7 +322,7 @@ impl MemorySet {
             None,
         ).unwrap();
         // Physical memory identical map
-        kprintln!("mapping physical memory");
+        info!("mapping physical memory [{:#x}, {:#x})", ekernel as usize, MEMORY_END as usize);
         memory_set.push(
             MapArea::new(
                 (ekernel as usize).into(),

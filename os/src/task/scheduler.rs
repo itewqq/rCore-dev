@@ -1,7 +1,7 @@
 use core::cmp::{Ord, Ordering};
 use alloc::collections::BinaryHeap;
 
-pub const BIG_STRIDE: usize = 1_000;
+pub const BIG_STRIDE: usize = usize::MAX;
 
 #[derive(Copy, Clone, Eq)]
 pub struct Stride {
@@ -17,6 +17,15 @@ impl Stride {
     pub fn zeros() -> Self {
         Self { id: 0, pass: 0, }
     }
+
+    pub fn abs_diff(&self, other: &Self) -> usize {
+        if self.pass < other.pass {
+            other.pass - self.pass
+        } else {
+            self.pass - other.pass
+        }
+    }
+
 }
 
 impl Ord for Stride {
@@ -27,7 +36,12 @@ impl Ord for Stride {
 
 impl PartialOrd for Stride {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        // Some(self.cmp(other))
+        if self.abs_diff(other) <= (BIG_STRIDE >> 1) {
+            Some(self.cmp(other))
+        } else {
+            Some(self.cmp(other).reverse())
+        }
     }
 }
 

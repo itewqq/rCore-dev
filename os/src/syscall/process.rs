@@ -21,7 +21,6 @@ pub struct TimeVal {
 }
 
 pub fn sys_exit(exit_code: i32) -> ! {
-    kprintln!("Process {} exited with code {}", current_task().unwrap().pid.0, exit_code);
     exit_current_and_run_next(exit_code);
     panic!("Unreachable in sys_exit!");
 }
@@ -64,7 +63,6 @@ pub fn sys_getpid() -> isize {
 
 pub fn sys_fork() -> isize {
     let current = current_task().unwrap();
-    debug!("sys_fork, current pid: {}", current.pid.0);
     let child_task = current.fork();
     let child_pid = child_task.pid.0;
     // modify return address in trap context
@@ -73,7 +71,6 @@ pub fn sys_fork() -> isize {
     trap_cx.x[10] = 0;  //x[10] is a0 reg
     // add task to scheduler queue
     add_task(child_task);
-    debug!("sys_fork, child pid pid: {}", child_pid);
     child_pid as isize
 }
 
@@ -117,7 +114,6 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
         // so that after dropped, the kernel stack and pagetable and pid_handle will be recycled
         assert_eq!(Arc::strong_count(&child), 1);
         let found_pid = child.getpid();
-        debug!("recycle child: {}", found_pid);
         let exit_code = child.inner_exclusive_access().exit_code;
         // write exit_code to the user space
         *translated_refmut(inner.memory_set.token(), exit_code_ptr) = exit_code;

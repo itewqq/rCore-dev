@@ -6,9 +6,7 @@ mod scheduler;
 mod switch;
 mod task;
 
-use crate::loader::get_app_data;
 use crate::loader::get_app_data_by_name;
-use crate::loader::get_num_app;
 use crate::mm::{MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
@@ -22,7 +20,7 @@ pub use processor::{
     current_task, current_trap_cx, current_user_token, schedule, take_current_task, run_tasks,
     current_pid,
 };
-use scheduler::{StrideScheduler, BIG_STRIDE};
+use scheduler::StrideScheduler;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 
