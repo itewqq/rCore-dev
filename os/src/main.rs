@@ -38,13 +38,14 @@ fn clear_bss() {
 pub fn rust_main() -> ! {
     clear_bss();
     mm::init();
-    kprintln!("paging enabled");
+    info!("paging enabled...");
     task::add_initproc();
     trap::init();
-    kprintln!("all traps enabled");
+    info!("all traps enabled...");
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    kprintln!("timer trigger enabled");
+    info!("timer trigger enabled...");
+    kprintln!("Welcome to rCore OS!");
     loader::list_apps();
     task::run_tasks();
     panic!("Unreachable in rust_main!");
