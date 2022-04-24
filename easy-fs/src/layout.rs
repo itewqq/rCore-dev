@@ -288,6 +288,7 @@ impl DiskInode {
         v
     }
 
+    // read from offset in current disk inode to buf
     pub fn read_at(
         &self,
         offset: usize,

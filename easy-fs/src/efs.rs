@@ -3,7 +3,7 @@ use spin::Mutex;
 
 use crate::{get_block_cache, layout::SuperBlock};
 
-use super::{Bitmap, BlockDevice, DiskInode, DiskInodeType, BLOCK_SZ};
+use super::{Bitmap, BlockDevice, DiskInode, DiskInodeType, BLOCK_SZ, Inode};
 
 type DataBlock = [u8; BLOCK_SZ];
 
@@ -22,7 +22,7 @@ impl EasyFileSystem {
         inode_bitmap_blocks: u32,
     ) -> Arc<Mutex<Self>> {
         let inode_bitmap = Bitmap::new(1, inode_bitmap_blocks as usize);
-        // calculate how many blocks is needed to store all the inodes
+        // calculate how many blocks is needed to store all the disk inodes
         let inode_num = inode_bitmap.max_bits();
         let inode_area_blocks =
             ((inode_num * core::mem::size_of::<DiskInode>() + BLOCK_SZ - 1) / BLOCK_SZ) as u32;
@@ -65,7 +65,7 @@ impl EasyFileSystem {
                 )
             },
         );
-        // create a inode for root node "/"
+        // create a disk inode for root node "/"
         assert_eq!(efs.alloc_inode(), 0);
         let (root_inode_block_id, root_inode_offset) = efs.get_disk_inode_pos(0);
         // initialize it as Directory
@@ -75,6 +75,30 @@ impl EasyFileSystem {
                 disk_inode.initialize(DiskInodeType::Directory);
             });
         Arc::new(Mutex::new(efs))
+    }
+
+    // open an exsisted easy-fs from a block device
+    pub fn open(block_device: Arc<dyn BlockDevice>) -> Arc<Mutex<Self>> {
+        // read SuperBlock
+        get_block_cache(0, Arc::clone(&block_device))
+            .lock()
+            .read(0, |super_block: &SuperBlock| {
+                assert!(super_block.is_valid(), "Error loading EFS!");
+                let inode_total_blocks =
+                    super_block.inode_bitmap_blocks + super_block.inode_area_blocks;
+                // the bitmaps only store meta data of real bitmaps in disk
+                let efs = Self {
+                    block_device,
+                    inode_bitmap: Bitmap::new(1, super_block.inode_bitmap_blocks as usize),
+                    data_bitmap: Bitmap::new(
+                        (1 + inode_total_blocks) as usize,
+                        super_block.data_bitmap_blocks as usize,
+                    ),
+                    inode_area_start_block: 1 + super_block.inode_bitmap_blocks,
+                    data_area_start_block: 1 + inode_total_blocks + super_block.data_bitmap_blocks,
+                };
+                Arc::new(Mutex::new(efs))
+            })
     }
 
     // given an inode_id, return the actual position (block id, inner offset)
@@ -117,5 +141,13 @@ impl EasyFileSystem {
             &self.block_device,
             (block_id - self.data_area_start_block) as usize,
         )
+    }
+
+    pub fn root_inode(efs: &Arc<Mutex<Self>>) -> Inode {
+        let block_device = Arc::clone(&efs.lock().block_device);
+        // acquire efs lock temporarily
+        let (block_id, block_offset) = efs.lock().get_disk_inode_pos(0);
+        // release efs lock
+        Inode::new(block_id, block_offset, Arc::clone(efs), block_device)
     }
 }
