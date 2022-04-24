@@ -28,6 +28,7 @@ impl Bitmap {
         }
     }
 
+    // change bitmap and return block id
     pub fn alloc(&self, block_device: &Arc<dyn BlockDevice>) -> Option<usize> {
         for block_id in 0..self.blocks {
             let pos = get_block_cache(
@@ -63,5 +64,9 @@ impl Bitmap {
                 assert!(bitmap_block[bits64_pos] & (1u64 << inner_pos) > 0);
                 bitmap_block[bits64_pos] -= 1u64 << inner_pos;
             })
+    }
+
+    pub fn max_bits(&self) -> usize {
+        self.blocks * BLOCK_BITS
     }
 }

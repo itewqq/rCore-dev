@@ -64,6 +64,7 @@ pub struct DiskInode {
 }
 
 impl DiskInode {
+    // initialize a empty DiskInode
     pub fn initialize(&mut self, type_: DiskInodeType) {
         self.size = 0;
         self.direct.iter_mut().for_each(|v| *v = 0);
