@@ -1,5 +1,5 @@
-use alloc::vec::Vec;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use lazy_static::*;
 use spin::Mutex;
 
@@ -55,7 +55,7 @@ impl BlockCache {
         func(self.get_ref(offset))
     }
 
-    pub fn write<T, V>(&mut self, offset: usize, func: impl FnOnce(&T) -> V) -> V {
+    pub fn modify<T, V>(&mut self, offset: usize, func: impl FnOnce(&mut T) -> V) -> V {
         func(self.get_mut(offset))
     }
 
@@ -80,9 +80,7 @@ pub struct BlockCacheManager {
 
 impl BlockCacheManager {
     pub fn new() -> Self {
-        Self {
-            queue: Vec::new(),
-        }
+        Self { queue: Vec::new() }
     }
 
     pub fn get_block_cache(
