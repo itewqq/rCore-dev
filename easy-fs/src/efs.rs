@@ -3,7 +3,7 @@ use spin::Mutex;
 
 use crate::{get_block_cache, layout::SuperBlock};
 
-use super::{Bitmap, BlockDevice, DiskInode, DiskInodeType, BLOCK_SZ, Inode};
+use super::{block_cache_sync_all, Bitmap, BlockDevice, DiskInode, DiskInodeType, BLOCK_SZ, Inode};
 
 type DataBlock = [u8; BLOCK_SZ];
 
@@ -74,6 +74,7 @@ impl EasyFileSystem {
             .modify(root_inode_offset, |disk_inode: &mut DiskInode| {
                 disk_inode.initialize(DiskInodeType::Directory);
             });
+        block_cache_sync_all();
         Arc::new(Mutex::new(efs))
     }
 

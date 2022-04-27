@@ -155,21 +155,22 @@ impl Inode {
                 fs.dealloc_data(data_block);
             }
         });
+        block_cache_sync_all();
     }
 
     pub fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
         let _fs = self.fs.lock();
-        self.read_disk_inode(|disk_inode| {
-            disk_inode.read_at(offset, buf, &self.block_device)
-        })
+        self.read_disk_inode(|disk_inode| disk_inode.read_at(offset, buf, &self.block_device))
     }
 
     pub fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
         let mut fs = self.fs.lock();
-        self.modify_disk_inode(|disk_inode| {
+        let size = self.modify_disk_inode(|disk_inode| {
             self.increase_size((offset + buf.len()) as u32, disk_inode, &mut fs);
             disk_inode.write_at(offset, buf, &self.block_device)
-        })
+        });
+        block_cache_sync_all();
+        size
     }
 
     fn increase_size(
