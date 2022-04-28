@@ -2,6 +2,7 @@ use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::config::TRAP_CONTEXT;
 use crate::sync::UPSafeCell;
 use crate::trap::{TrapContext, trap_handler};
+use crate::fs::File;
 
 use super::TaskContext;
 use super::pid::{PidHandle, KernelStack, pid_alloc};
@@ -43,6 +44,7 @@ pub struct TaskControlBlockInner {
     pub parent: Option<Weak<TaskControlBlock> >,
     pub children: Vec<Arc<TaskControlBlock> >,
     pub exit_code: i32,
+    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
 }
 
 impl TaskControlBlockInner {
