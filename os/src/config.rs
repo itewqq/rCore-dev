@@ -16,4 +16,4 @@ pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
 }
 
 // #[cfg(feature = "board_qemu")]
-pub const CLOCK_FREQ: usize = 12500000;
+pub use crate::board::{CLOCK_FREQ, MMIO};

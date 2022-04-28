@@ -10,18 +10,23 @@ extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 
+#[path = "boards/qemu.rs"]
+mod board;
+
 #[macro_use]
 mod console;
-mod lang_items;
-mod sbi;
-mod syscall;
-mod trap;
-mod task;
-mod sync;
-mod timer;
 mod config;
+mod drivers;
+mod fs;
+mod lang_items;
 mod loader;
 mod mm;
+mod sbi;
+mod sync;
+mod syscall;
+mod task;
+mod timer;
+mod trap;
 
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("link_app.S"));
