@@ -6,7 +6,7 @@ mod scheduler;
 mod switch;
 mod task;
 
-use crate::loader::get_app_data_by_name;
+use crate::fs::{open_file, OpenFlags};
 use crate::mm::{MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
@@ -17,8 +17,8 @@ use alloc::vec::Vec;
 use lazy_static::*;
 pub use manager::{add_task, fetch_task};
 pub use processor::{
-    current_task, current_trap_cx, current_user_token, schedule, take_current_task, run_tasks,
-    current_pid,
+    current_pid, current_task, current_trap_cx, current_user_token, run_tasks, schedule,
+    take_current_task,
 };
 use scheduler::StrideScheduler;
 use switch::__switch;
@@ -27,9 +27,11 @@ use task::{TaskControlBlock, TaskStatus};
 pub use context::TaskContext;
 
 lazy_static! {
-    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(TaskControlBlock::new(
-        get_app_data_by_name("initproc").unwrap()
-    ));
+    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new({
+        let inode = open_file("initproc", OpenFlags::RDONLY).unwrap();
+        let v = inode.read_all();
+        TaskControlBlock::new(v.as_slice())
+    });
 }
 
 pub struct TaskManager {
@@ -94,13 +96,22 @@ pub fn exit_current_and_run_next(exit_code: i32) {
 }
 
 pub fn set_current_prio(prio: usize) {
-    current_task().unwrap().inner_exclusive_access().set_prio(prio);
-} 
+    current_task()
+        .unwrap()
+        .inner_exclusive_access()
+        .set_prio(prio);
+}
 
-pub fn current_memory_set_mmap(start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) -> Result<(), &'static str > {
+pub fn current_memory_set_mmap(
+    start_va: VirtAddr,
+    end_va: VirtAddr,
+    permission: MapPermission,
+) -> Result<(), &'static str> {
     let task = current_task().unwrap();
     let mut inner = task.inner_exclusive_access();
-    inner.memory_set.insert_framed_area(start_va, end_va, permission)
+    inner
+        .memory_set
+        .insert_framed_area(start_va, end_va, permission)
 }
 
 pub fn current_memory_set_munmap(start_va: VirtAddr, end_va: VirtAddr) -> isize {
