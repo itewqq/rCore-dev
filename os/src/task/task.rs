@@ -2,7 +2,7 @@ use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::config::TRAP_CONTEXT;
 use crate::sync::UPSafeCell;
 use crate::trap::{TrapContext, trap_handler};
-use crate::fs::File;
+use crate::fs::{File, Stdin, Stdout};
 
 use super::TaskContext;
 use super::pid::{PidHandle, KernelStack, pid_alloc};
@@ -13,6 +13,7 @@ use alloc::{
         Weak,
         Arc,
     },
+    vec,
     vec::Vec,
 };
 
@@ -105,6 +106,14 @@ impl TaskControlBlock {
                 parent: None,
                 children: Vec::new(),
                 exit_code: 0,
+                fd_table: vec![
+                    // 0 -> stdin
+                    Some(Arc::new(Stdin)),
+                    // 1 -> stdout
+                    Some(Arc::new(Stdout)),
+                    // 2 -> stderr
+                    Some(Arc::new(Stdout)),
+                ],
             })},
         };
         // prepare TrapContext in user space
@@ -156,6 +165,15 @@ impl TaskControlBlock {
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
+        // copy fds that are not busy(Option::None) from parent
+        let mut new_fd_table: Vec<Option<Arc<dyn File + Send + Sync>>> = Vec::new();
+        for fd in parent_inner.fd_table.iter() {
+            if let Some(file) = fd {
+                new_fd_table.push(Some(file.clone()));
+            } else {
+                new_fd_table.push(None);
+            }
+        }
         // create inner
         let task_control_block_inner = unsafe { UPSafeCell::new(TaskControlBlockInner { 
             trap_cx_ppn: trap_cx_ppn, 
@@ -168,6 +186,7 @@ impl TaskControlBlock {
             parent: Some(Arc::downgrade(self)), 
             children: Vec::new(), 
             exit_code: 0, 
+            fd_table: new_fd_table,
         })};
         // modify kernel sp in child's trap_cx
         let trap_cx = task_control_block_inner.exclusive_access().get_trap_cx();

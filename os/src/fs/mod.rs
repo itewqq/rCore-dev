@@ -10,3 +10,4 @@ pub trait File : Send + Sync {
     fn write(&self, buf: UserBuffer) -> usize;
 }
 
+pub use stdio::{Stdin, Stdout};
