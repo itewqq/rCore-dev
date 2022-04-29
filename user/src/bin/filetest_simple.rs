@@ -10,6 +10,7 @@ use user_lib::{close, open, read, write, OpenFlags};
 pub fn main() -> i32 {
     let test_str = "Hello, world!";
     let filea = "filea\0";
+    println!("{}", filea);
     let fd = open(filea, OpenFlags::CREATE | OpenFlags::WRONLY);
     assert!(fd > 0);
     let fd = fd as usize;

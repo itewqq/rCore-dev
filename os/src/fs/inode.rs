@@ -117,6 +117,7 @@ pub fn list_apps() {
     debug!("**************/");
 }
 
+// open file from root directory with name and flags
 pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     let (readable, writable) = flags.read_write();
     if flags.contains(OpenFlags::CREATE) {

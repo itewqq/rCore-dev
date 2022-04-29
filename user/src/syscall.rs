@@ -22,6 +22,7 @@ pub const SYSCALL_MAIL_READ: usize = 401;
 pub const SYSCALL_MAIL_WRITE: usize = 402;
 pub const SYSCALL_DUP: usize = 24;
 pub const SYSCALL_PIPE: usize = 59;
+pub const SYSCALL_OPEN: usize = 1024;
 
 pub fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
@@ -52,6 +53,10 @@ pub fn syscall6(id: usize, args: [usize; 6]) -> isize {
         );
     }
     ret
+}
+
+pub fn sys_open(path: &str, flags: u32) -> isize {
+    syscall(SYSCALL_OPEN, [path.as_ptr() as usize, flags as usize, 0])
 }
 
 pub fn sys_openat(dirfd: usize, path: &str, flags: u32, mode: u32) -> isize {

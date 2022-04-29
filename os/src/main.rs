@@ -19,7 +19,6 @@ mod config;
 mod drivers;
 mod fs;
 mod lang_items;
-mod loader;
 mod mm;
 mod sbi;
 mod sync;
@@ -29,7 +28,6 @@ mod timer;
 mod trap;
 
 global_asm!(include_str!("entry.asm"));
-global_asm!(include_str!("link_app.S"));
 
 fn clear_bss() {
     extern "C" {
@@ -51,7 +49,6 @@ pub fn rust_main() -> ! {
     timer::set_next_trigger();
     info!("timer trigger enabled...");
     kprintln!("Welcome to rCore OS!");
-    loader::list_apps();
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

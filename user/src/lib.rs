@@ -114,6 +114,10 @@ bitflags! {
 const AT_FDCWD: isize = -100;
 
 pub fn open(path: &str, flags: OpenFlags) -> isize {
+    sys_open(path, flags.bits)
+}
+
+pub fn openat(path: &str, flags: OpenFlags) -> isize {
     sys_openat(AT_FDCWD as usize, path, flags.bits, OpenFlags::RDWR.bits)
 }
 
