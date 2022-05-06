@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use easy_fs::{BlockDevice, EasyFileSystem};
+use easy_fs::{BlockDevice, EasyFileSystem, AT_FDCWD};
 use std::fs::{read_dir, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::sync::Arc;
@@ -118,6 +118,14 @@ mod tests {
         //let mut buffer = [0u8; 512];
         let mut buffer = [0u8; 233];
         let len = filea.read_at(0, &mut buffer);
+        assert_eq!(greet_str, core::str::from_utf8(&buffer[..len]).unwrap(),);
+
+        // ==== linkat test ====
+        let linkat_result = root_inode.linkat(AT_FDCWD, "filea", AT_FDCWD, "filec", 0);
+        assert_eq!(linkat_result, 0);
+        let filec = root_inode.find("filec").unwrap();
+        let mut buffer = [0u8; 233];
+        let len = filec.read_at(0, &mut buffer);
         assert_eq!(greet_str, core::str::from_utf8(&buffer[..len]).unwrap(),);
 
         let mut random_str_test = |len: usize| {

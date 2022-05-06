@@ -5,7 +5,7 @@ use spin::{Mutex, MutexGuard};
 
 use super::{
     block_cache_sync_all, get_block_cache, BlockDevice, DirEntry, DiskInode, DiskInodeType,
-    EasyFileSystem, DIRENT_SZ,
+    EasyFileSystem, AT_FDCWD, DIRENT_SZ,
 };
 
 pub struct Inode {
@@ -171,6 +171,61 @@ impl Inode {
         });
         block_cache_sync_all();
         size
+    }
+
+    // assume it can only be called by the root Inode
+    pub fn linkat(
+        &self,
+        olddirfd: i32,
+        oldpath: &str,
+        newdirfd: i32,
+        newpath: &str,
+        flags: u32,
+    ) -> i32 {
+        // for now just support AT_FDCWD
+        assert_eq!(olddirfd, AT_FDCWD);
+        assert_eq!(newdirfd, AT_FDCWD);
+        assert_eq!(flags, 0);
+        // if the newpath already exsist, return -1
+        if self
+            .read_disk_inode(|root_inode| {
+                assert!(root_inode.is_dir());
+                self.find_inode_id(newpath, root_inode)
+            })
+            .is_some()
+        {
+            return -1;
+        }
+        // if the oldpath not exist, return -1, otherwise hard link it with new path
+        match self.read_disk_inode(|root_inode| {
+            assert!(root_inode.is_dir());
+            self.find_inode_id(oldpath, root_inode)
+        }) {
+            Some(old_inode_id) => {
+                // make sure oldpath is a file
+                self.find(oldpath)
+                    .unwrap()
+                    .read_disk_inode(|old_disk_node| {
+                        assert_eq!(old_disk_node.is_file(), true);
+                    });
+                let mut fs = self.fs.lock();
+                let dirent = DirEntry::new(newpath, old_inode_id);
+                self.modify_disk_inode(|root_inode| {
+                    let file_count = (root_inode.size as usize) / DIRENT_SZ;
+                    let new_size = (file_count + 1) * DIRENT_SZ;
+                    // increase size
+                    self.increase_size(new_size as u32, root_inode, &mut fs);
+                    root_inode.write_at(
+                        file_count * DIRENT_SZ,
+                        dirent.as_bytes(),
+                        &self.block_device,
+                    );
+                });
+                // block_cache_sync_all();
+                0
+            }
+            None => -1,
+        }
     }
 
     fn increase_size(

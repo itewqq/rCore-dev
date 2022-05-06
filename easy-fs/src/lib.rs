@@ -10,6 +10,7 @@ mod layout;
 mod vfs;
 
 pub const BLOCK_SZ: usize = 512;
+pub const AT_FDCWD: i32 = -100;
 use bitmap::Bitmap;
 pub use block_cache::{block_cache_sync_all, get_block_cache};
 pub use block_dev::BlockDevice;
