@@ -121,13 +121,32 @@ mod tests {
         assert_eq!(greet_str, core::str::from_utf8(&buffer[..len]).unwrap(),);
 
         // ==== linkat test ====
-        let linkat_result = root_inode.linkat(AT_FDCWD, "filea", AT_FDCWD, "filec", 0);
+        let fileb = root_inode.find("fileb").unwrap();
+        fileb.write_at(0, greet_str.as_bytes());
+        let linkat_result = root_inode.linkat(AT_FDCWD, "fileb", AT_FDCWD, "filec", 0);
         assert_eq!(linkat_result, 0);
         let filec = root_inode.find("filec").unwrap();
         let mut buffer = [0u8; 233];
         let len = filec.read_at(0, &mut buffer);
         assert_eq!(greet_str, core::str::from_utf8(&buffer[..len]).unwrap(),);
 
+        // ==== unlinkat test ====
+        let mut nlink = root_inode
+            .find("filec")
+            .unwrap()
+            .read_disk_inode(|disk_inode| disk_inode.nlink);
+        assert_eq!(nlink, 2);
+        let unlinkat_result = root_inode.unlinkat(AT_FDCWD, "fileb", 0);
+        nlink = root_inode
+            .find("filec")
+            .unwrap()
+            .read_disk_inode(|disk_inode| disk_inode.nlink);
+        assert_eq!(unlinkat_result, 0);
+        assert_eq!(nlink, 1);
+        let len = filec.read_at(0, &mut buffer);
+        assert_eq!(greet_str, core::str::from_utf8(&buffer[..len]).unwrap(),);
+
+        // random string test
         let mut random_str_test = |len: usize| {
             filea.clear();
             assert_eq!(filea.read_at(0, &mut buffer), 0,);

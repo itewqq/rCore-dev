@@ -1,3 +1,5 @@
+use std::println;
+
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -31,13 +33,13 @@ impl Inode {
         }
     }
 
-    fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
+    pub fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
         get_block_cache(self.block_id, Arc::clone(&self.block_device))
             .lock()
             .read(self.block_offset, f)
     }
 
-    fn modify_disk_inode<V>(&self, f: impl FnOnce(&mut DiskInode) -> V) -> V {
+    pub fn modify_disk_inode<V>(&self, f: impl FnOnce(&mut DiskInode) -> V) -> V {
         get_block_cache(self.block_id, Arc::clone(&self.block_device))
             .lock()
             .modify(self.block_offset, f)
@@ -208,6 +210,11 @@ impl Inode {
                     .read_disk_inode(|old_disk_node| {
                         assert_eq!(old_disk_node.is_file(), true);
                     });
+
+                // update link number here for the fs.lock()
+                self.find(oldpath).unwrap().modify_disk_inode(|disk_inode| {
+                    disk_inode.inc_nlink();
+                });
                 let mut fs = self.fs.lock();
                 let dirent = DirEntry::new(newpath, old_inode_id);
                 self.modify_disk_inode(|root_inode| {
@@ -225,6 +232,57 @@ impl Inode {
                 0
             }
             None => -1,
+        }
+    }
+
+    // assume it can only be called by the root Inode
+    pub fn unlinkat(&self, dirfd: i32, path: &str, flags: u32) -> i32 {
+        assert_eq!(dirfd, AT_FDCWD);
+        assert_eq!(flags, 0);
+        match self.read_disk_inode(|root_inode| {
+            assert!(root_inode.is_dir());
+            self.find_inode_id(path, root_inode)
+        }) {
+            Some(_) => {
+                // not delete the inode, nor free the data, just update the link number...
+                // TODO implement the file delete function
+                let mut dirent = DirEntry::new_zeros();
+                let res = self.modify_disk_inode(|root_inode| {
+                    let file_count = (root_inode.size as usize) / DIRENT_SZ;
+                    for i in 0..file_count {
+                        assert_eq!(
+                            root_inode.read_at(
+                                DIRENT_SZ * i,
+                                dirent.as_bytes_mut(),
+                                &self.block_device,
+                            ),
+                            DIRENT_SZ,
+                        );
+                        if dirent.name() == path {
+                            // write a empty block to cover the old one
+                            root_inode.write_at(
+                                file_count * DIRENT_SZ,
+                                DirEntry::new_zeros().as_bytes(),
+                                &self.block_device,
+                            );
+                            return 0;
+                        }
+                    }
+                    return -1;
+                });
+                if res == 0 {
+                    // ==== update link number ====
+                    let target_inode = self.find(path).unwrap();
+                    target_inode.modify_disk_inode(|target_inode| {
+                        target_inode.dec_nlink();
+                    });
+                }
+                res
+            }
+            None => {
+                // if the path not exsist, return -1
+                -1
+            }
         }
     }
 

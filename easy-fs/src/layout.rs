@@ -60,6 +60,7 @@ pub struct DiskInode {
     pub direct: [u32; INODE_DIRECT_COUNT],
     pub indirect1: u32,
     pub indirect2: u32,
+    pub nlink: u32,
     type_: DiskInodeType,
 }
 
@@ -70,7 +71,16 @@ impl DiskInode {
         self.direct.iter_mut().for_each(|v| *v = 0);
         self.indirect1 = 0;
         self.indirect2 = 0;
+        self.nlink = 1;
         self.type_ = type_;
+    }
+
+    pub fn inc_nlink(&mut self){
+        self.nlink += 1;
+    }
+
+    pub fn dec_nlink(&mut self){
+        self.nlink -= 1;
     }
 
     pub fn is_dir(&self) -> bool {
@@ -329,7 +339,7 @@ impl DiskInode {
         read_size
     }
 
-    /// File size must be adjusted before.
+    /// File size must be adjusted before, and assuming we have lock on blockcache
     pub fn write_at(
         &mut self,
         offset: usize,
