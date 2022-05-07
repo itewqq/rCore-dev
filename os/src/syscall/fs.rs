@@ -110,20 +110,18 @@ pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
     }
     // translate buffer in user mode
     let len = size_of::<Stat>();
+    // release current task TCB manually to avoid multi-borrow
+    drop(inner);
     let mut ts_buffers = translated_byte_buffers(current_user_token(), st.cast(), len);
     // At least one buf
     if ts_buffers.len() <= 0 {
         return -1;
     }
     let st: *mut Stat = ts_buffers[0].as_mut_ptr().cast();
-
+    // re-access to current task TCB
+    let inner = task.inner_exclusive_access();
     if let Some(file) = &inner.fd_table[fd] {
         let file = file.clone();
-        if !file.readable() {
-            return -1;
-        }
-        // release current task TCB manually to avoid multi-borrow
-        drop(inner);
         let stat = file.fstat();
         unsafe {
             *st = stat;
