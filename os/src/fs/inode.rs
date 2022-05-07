@@ -1,10 +1,10 @@
-use super::File;
+use super::{File, Stat, StatMode};
 use crate::drivers::BLOCK_DEVICE;
 use crate::fs::UserBuffer;
 use crate::sync::UPSafeCell;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use easy_fs::{EasyFileSystem, Inode};
+use easy_fs::{DiskInodeType, EasyFileSystem, Inode};
 use lazy_static::*;
 
 lazy_static! {
@@ -107,6 +107,21 @@ impl File for OSInode {
         }
         total_write_size
     }
+
+    fn fstat(&self) -> Stat {
+        let inner = self.inner.exclusive_access();
+        let mode = match inner.inode.mode() {
+            DiskInodeType::File => StatMode::FILE,
+            DiskInodeType::Directory => StatMode::DIR,
+        };
+        Stat {
+            dev: 0,
+            ino: inner.inode.inode_id() as u64,
+            mode,
+            nlink: inner.inode.nlink() as u32,
+            pad: [0; 7],
+        }
+    }
 }
 
 pub fn list_apps() {
@@ -139,4 +154,14 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
             Arc::new(OSInode::new(readable, writable, inode))
         })
     }
+}
+
+// linkat, just wrap the Inode interface
+pub fn linkat(oldpath: &str, newpath: &str, flags: u32) -> isize {
+    ROOT_INODE.linkat(oldpath, newpath, flags)
+}
+
+// unlinkat, just wrap the Inode interface
+pub fn unlinkat(path: &str, flags: u32) -> isize {
+    ROOT_INODE.unlinkat(path, flags)
 }

@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use easy_fs::{BlockDevice, EasyFileSystem, AT_FDCWD};
+use easy_fs::{BlockDevice, EasyFileSystem};
 use std::fs::{read_dir, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::sync::Arc;
@@ -123,7 +123,7 @@ mod tests {
         // ==== linkat test ====
         let fileb = root_inode.find("fileb").unwrap();
         fileb.write_at(0, greet_str.as_bytes());
-        let linkat_result = root_inode.linkat(AT_FDCWD, "fileb", AT_FDCWD, "filec", 0);
+        let linkat_result = root_inode.linkat("fileb", "filec", 0);
         assert_eq!(linkat_result, 0);
         let filec = root_inode.find("filec").unwrap();
         let mut buffer = [0u8; 233];
@@ -136,7 +136,7 @@ mod tests {
             .unwrap()
             .read_disk_inode(|disk_inode| disk_inode.nlink);
         assert_eq!(nlink, 2);
-        let unlinkat_result = root_inode.unlinkat(AT_FDCWD, "fileb", 0);
+        let unlinkat_result = root_inode.unlinkat( "fileb", 0);
         nlink = root_inode
             .find("filec")
             .unwrap()

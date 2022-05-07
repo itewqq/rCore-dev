@@ -1,5 +1,3 @@
-use std::println;
-
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -7,7 +5,7 @@ use spin::{Mutex, MutexGuard};
 
 use super::{
     block_cache_sync_all, get_block_cache, BlockDevice, DirEntry, DiskInode, DiskInodeType,
-    EasyFileSystem, AT_FDCWD, DIRENT_SZ,
+    EasyFileSystem, DIRENT_SZ,
 };
 
 pub struct Inode {
@@ -31,6 +29,29 @@ impl Inode {
             fs,
             block_device,
         }
+    }
+
+    pub fn inode_id(&self) -> u32 {
+        self.read_disk_inode(|disk_node|{
+            disk_node.inode_id
+        })
+    }
+
+    pub fn nlink(&self) -> usize {
+        self.read_disk_inode(|disk_node|{
+            disk_node.nlink as usize
+        })
+    }
+
+    // we only have two Inode type for now
+    pub fn mode(&self) -> DiskInodeType {
+        self.read_disk_inode(|disk_node|{
+            if disk_node.is_dir() {
+                DiskInodeType::Directory
+            }else{
+                DiskInodeType::File
+            }
+        })
     }
 
     pub fn read_disk_inode<V>(&self, f: impl FnOnce(&DiskInode) -> V) -> V {
@@ -115,7 +136,7 @@ impl Inode {
         get_block_cache(new_inode_block_id as usize, Arc::clone(&self.block_device))
             .lock()
             .modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
-                new_inode.initialize(DiskInodeType::File);
+                new_inode.initialize(new_inode_id, DiskInodeType::File);
             });
         // append file in the dirent
         self.modify_disk_inode(|root_inode| {
@@ -176,17 +197,8 @@ impl Inode {
     }
 
     // assume it can only be called by the root Inode
-    pub fn linkat(
-        &self,
-        olddirfd: i32,
-        oldpath: &str,
-        newdirfd: i32,
-        newpath: &str,
-        flags: u32,
-    ) -> i32 {
+    pub fn linkat(&self, oldpath: &str, newpath: &str, flags: u32) -> isize {
         // for now just support AT_FDCWD
-        assert_eq!(olddirfd, AT_FDCWD);
-        assert_eq!(newdirfd, AT_FDCWD);
         assert_eq!(flags, 0);
         // if the newpath already exsist, return -1
         if self
@@ -236,8 +248,7 @@ impl Inode {
     }
 
     // assume it can only be called by the root Inode
-    pub fn unlinkat(&self, dirfd: i32, path: &str, flags: u32) -> i32 {
-        assert_eq!(dirfd, AT_FDCWD);
+    pub fn unlinkat(&self, path: &str, flags: u32) -> isize {
         assert_eq!(flags, 0);
         match self.read_disk_inode(|root_inode| {
             assert!(root_inode.is_dir());

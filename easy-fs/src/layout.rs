@@ -56,6 +56,7 @@ pub enum DiskInodeType {
 
 #[repr(C)]
 pub struct DiskInode {
+    pub inode_id: u32,
     pub size: u32,
     pub direct: [u32; INODE_DIRECT_COUNT],
     pub indirect1: u32,
@@ -66,7 +67,8 @@ pub struct DiskInode {
 
 impl DiskInode {
     // initialize a empty DiskInode
-    pub fn initialize(&mut self, type_: DiskInodeType) {
+    pub fn initialize(&mut self, inode_id: u32, type_: DiskInodeType) {
+        self.inode_id = inode_id;
         self.size = 0;
         self.direct.iter_mut().for_each(|v| *v = 0);
         self.indirect1 = 0;

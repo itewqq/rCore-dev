@@ -72,7 +72,7 @@ impl EasyFileSystem {
         get_block_cache(root_inode_block_id as usize, Arc::clone(&block_device))
             .lock()
             .modify(root_inode_offset, |disk_inode: &mut DiskInode| {
-                disk_inode.initialize(DiskInodeType::Directory);
+                disk_inode.initialize(0, DiskInodeType::Directory);
             });
         block_cache_sync_all();
         Arc::new(Mutex::new(efs))

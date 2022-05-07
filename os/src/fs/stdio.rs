@@ -1,4 +1,4 @@
-use super::File;
+use super::{File, Stat};
 use crate::mm::UserBuffer;
 use crate::sbi::console_getchar;
 use crate::task::suspend_current_and_run_next;
@@ -40,6 +40,10 @@ impl File for Stdin {
         error!("Cannot write to stdin!");
         0
     }
+
+    fn fstat(&self) -> Stat {
+        Stat::new()
+    }
 }
 
 impl File for Stdout {
@@ -61,5 +65,9 @@ impl File for Stdout {
             print!("{}", core::str::from_utf8(*buffer).unwrap());
         }
         user_buf.len()
+    }
+
+    fn fstat(&self) -> Stat {
+        Stat::new()
     }
 }
