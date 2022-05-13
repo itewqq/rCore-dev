@@ -1,6 +1,7 @@
 use crate::mm::UserBuffer;
 
 mod inode;
+mod pipe;
 mod stdio;
 
 #[repr(C)]
@@ -55,4 +56,5 @@ pub trait File: Send + Sync {
 }
 
 pub use inode::{linkat, list_apps, open_file, unlinkat, OSInode, OpenFlags};
+pub use pipe::{make_pipe, Pipe};
 pub use stdio::{Stdin, Stdout};
