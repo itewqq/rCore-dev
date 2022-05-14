@@ -4,7 +4,7 @@ use crate::sync::UPSafeCell;
 use crate::trap::{TrapContext, trap_handler};
 use crate::fs::{File, Stdin, Stdout};
 
-use super::TaskContext;
+use super::{TaskContext, SignalActions, SignalFlags};
 use super::pid::{PidHandle, KernelStack, pid_alloc};
 
 use core::cell::RefMut;
@@ -47,6 +47,17 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock> >,
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
+    pub signals: SignalFlags,
+    pub signal_mask: SignalFlags,
+    // the signal which is being handling
+    pub handling_sig: isize,
+    // Signal actions
+    pub signal_actions: SignalActions,
+    // if the task is killed
+    pub killed: bool,
+    // if the task is frozen by a signal
+    pub frozen: bool,
+    pub trap_ctx_backup: Option<TrapContext>
 }
 
 impl TaskControlBlockInner {
@@ -124,6 +135,13 @@ impl TaskControlBlock {
                     // 2 -> stderr
                     Some(Arc::new(Stdout)),
                 ],
+                signals: SignalFlags::empty(),
+                signal_mask: SignalFlags::empty(),
+                handling_sig: -1,
+                signal_actions: SignalActions::default(),
+                killed: false,
+                frozen: false,
+                trap_ctx_backup: None
             })},
         };
         // prepare TrapContext in user space
@@ -220,6 +238,15 @@ impl TaskControlBlock {
             children: Vec::new(), 
             exit_code: 0, 
             fd_table: new_fd_table,
+            // TODO shall we inherit from parent?
+            signals: SignalFlags::empty(),
+            // inherit the signal_mask and signal_action
+            signal_mask: parent_inner.signal_mask,
+            handling_sig: -1,
+            signal_actions: parent_inner.signal_actions.clone(),
+            killed: false,
+            frozen: false,
+            trap_ctx_backup: None
         })};
         // modify kernel sp in child's trap_cx
         let trap_cx = task_control_block_inner.exclusive_access().get_trap_cx();

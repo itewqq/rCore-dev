@@ -17,10 +17,8 @@ use riscv::register::{
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{
-    current_user_token,
-    current_trap_cx,
-    exit_current_and_run_next,
-    suspend_current_and_run_next,
+    check_signals_error_of_current, current_add_signal, current_trap_cx, current_user_token,
+    exit_current_and_run_next, suspend_current_and_run_next, SignalFlags, handle_signals,
 };
 use crate::timer::set_next_trigger;
 
@@ -82,17 +80,16 @@ pub fn trap_handler() -> ! {
             cx = current_trap_cx();
             cx.x[10] = result;
         }
-        Trap::Exception(Exception::StoreFault) |
-        Trap::Exception(Exception::LoadPageFault) |
-        Trap::Exception(Exception::StorePageFault) => {
-            let cx = current_trap_cx();
-            error!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
-            exit_current_and_run_next(-2);
+        Trap::Exception(Exception::StoreFault)
+        | Trap::Exception(Exception::StorePageFault)
+        | Trap::Exception(Exception::InstructionFault)
+        | Trap::Exception(Exception::InstructionPageFault)
+        | Trap::Exception(Exception::LoadFault)
+        | Trap::Exception(Exception::LoadPageFault) => {
+            current_add_signal(SignalFlags::SIGSEGV);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            let cx = current_trap_cx();
-            error!("[kernel] IllegalInstruction at 0x{:x?} in application, core dumped.", cx.sepc);
-            exit_current_and_run_next(-3);
+            current_add_signal(SignalFlags::SIGILL);
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
@@ -102,6 +99,14 @@ pub fn trap_handler() -> ! {
             panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
         }
     }
+    // handle signals (handle the sent signal)
+    handle_signals();
+    // check error signals (if error then exit)
+    if let Some((errno, msg)) = check_signals_error_of_current() {
+        error!("[kernel] {}", msg);
+        exit_current_and_run_next(errno);
+    }
+    // trap return
     trap_return();
 }
 

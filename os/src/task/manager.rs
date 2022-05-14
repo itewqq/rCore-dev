@@ -65,3 +65,8 @@ pub fn add_task(task: Arc<TaskControlBlock>) {
 pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
     TASK_MANAGER.exclusive_access().fetch()
 }
+
+pub fn pid2task(pid: usize) -> Option<Arc<TaskControlBlock>> {
+    let map = &TASK_MANAGER.exclusive_access().ready_queue;
+    map.get(&pid).map(Arc::clone)
+}

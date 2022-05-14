@@ -5,13 +5,11 @@
 extern crate user_lib;
 
 static TESTS: &[&str] = &[
-    "cat\0",
     "exit\0",
     "fantastic_text\0",
     "forktest\0",
     "forktest2\0",
     "forktest_simple\0",
-    "forktree\0",
     "hello_world\0",
     "matrix\0",
     "sleep\0",
@@ -28,7 +26,7 @@ pub fn main() -> i32 {
         println!("Usertests: Running {}", test);
         let pid = fork();
         if pid == 0 {
-            exec(*test);
+            exec(*test, &[core::ptr::null::<u8>()]);
             panic!("unreachable!");
         } else {
             let mut exit_code: i32 = Default::default();

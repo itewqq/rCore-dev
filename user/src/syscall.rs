@@ -1,4 +1,4 @@
-use super::{Stat, TimeVal};
+use super::{Stat, TimeVal, SignalAction};
 
 pub const SYSCALL_OPENAT: usize = 56;
 pub const SYSCALL_CLOSE: usize = 57;
@@ -9,6 +9,10 @@ pub const SYSCALL_LINKAT: usize = 37;
 pub const SYSCALL_FSTAT: usize = 80;
 pub const SYSCALL_EXIT: usize = 93;
 pub const SYSCALL_YIELD: usize = 124;
+const SYSCALL_KILL: usize = 129;
+pub const SYSCALL_SIGACTION: usize = 134;
+pub const SYSCALL_SIGPROCMASK: usize = 135;
+pub const SYSCALL_SIGRETURN: usize = 139;
 pub const SYSCALL_GETTIMEOFDAY: usize = 169;
 pub const SYSCALL_GETPID: usize = 172;
 pub const SYSCALL_FORK: usize = 220;
@@ -181,4 +185,20 @@ pub fn sys_dup(fd: usize) -> isize {
 
 pub fn sys_pipe(pipe: &mut [usize]) -> isize {
     syscall(SYSCALL_PIPE, [pipe.as_mut_ptr() as usize, 0, 0])
+}
+
+pub fn sys_kill(pid: usize, signal: i32) -> isize {
+    syscall(SYSCALL_KILL, [pid, signal as usize, 0])
+}
+
+pub fn sys_sigaction(signum: i32, action: *const SignalAction, old_action: *const SignalAction) -> isize {
+    syscall(SYSCALL_SIGACTION, [signum as usize , action as usize, old_action as usize])
+}
+
+pub fn sys_sigprocmask(mask: u32) -> isize {
+    syscall(SYSCALL_SIGPROCMASK, [mask as usize, 0, 0])
+}
+
+pub fn sys_sigreturn() -> isize {
+    syscall(SYSCALL_SIGRETURN, [0, 0, 0])
 }
