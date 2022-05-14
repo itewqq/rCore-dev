@@ -4,10 +4,7 @@
 #[macro_use]
 extern crate user_lib;
 
-use user_lib::{
-    exit, fork, getpid, kill, sigaction, sigprocmask, sigreturn, sleep, waitpid, SignalAction,
-    SignalFlags,
-};
+use user_lib::{exit, fork, kill, sigaction, sigreturn, sleep, waitpid, SignalAction};
 
 fn func() {
     println!("user_sig_test succsess");
@@ -32,7 +29,7 @@ pub fn main() -> i32 {
     } else if pid > 0 {
         println!("signal_simple2: parent kill child");
         sleep(500);
-        if kill(pid as usize, 1 << 10) < 0 {
+        if kill(pid as usize, 10) < 0 {
             println!("Kill failed!");
             exit(1);
         }

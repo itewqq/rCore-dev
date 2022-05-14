@@ -6,6 +6,7 @@ use lazy_static::*;
 use super::scheduler::BIG_STRIDE;
 use super::StrideScheduler;
 use super::TaskControlBlock;
+use super::{current_pid, current_task};
 use crate::sync::UPSafeCell;
 
 type Scheduler = StrideScheduler;
@@ -64,6 +65,10 @@ pub fn fetch_task() -> Option<Arc<TaskControlBlock>> {
 }
 
 pub fn pid2task(pid: usize) -> Option<Arc<TaskControlBlock>> {
-    let map = &TASK_MANAGER.exclusive_access().ready_queue;
-    map.get(&pid).map(Arc::clone)
+    if pid == current_pid() {
+        current_task()
+    } else {
+        let map = &TASK_MANAGER.exclusive_access().ready_queue;
+        map.get(&pid).map(Arc::clone)
+    }
 }

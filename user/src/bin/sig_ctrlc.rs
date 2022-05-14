@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![allow(unused_imports)]
 
 extern crate alloc;
 
@@ -37,6 +38,9 @@ pub fn main() -> i32 {
             return 0;
         }
     }
-    println!("sig_ctrlc: Done");
-    0
+    #[allow(unreachable_code)]
+    {
+        println!("sig_ctrlc: Done");
+        0
+    }
 }

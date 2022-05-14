@@ -151,7 +151,7 @@ fn call_kernel_signal_handler(signal: SignalFlags) {
             }
         }
         _ => {
-            // default to kill
+            // TODO implement instantlly kill
             task_inner.killed = true;
         }
     }

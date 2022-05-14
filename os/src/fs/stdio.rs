@@ -1,7 +1,7 @@
 use super::{File, Stat};
 use crate::mm::UserBuffer;
 use crate::sbi::console_getchar;
-use crate::task::suspend_current_and_run_next;
+use crate::task::{current_add_signal, suspend_current_and_run_next, SignalFlags};
 
 pub struct Stdin;
 
@@ -25,6 +25,9 @@ impl File for Stdin {
             if c == 0 {
                 suspend_current_and_run_next();
                 continue;
+            } else if c == 3 {
+                current_add_signal(SignalFlags::SIGINT);
+                break;
             } else {
                 break;
             }
