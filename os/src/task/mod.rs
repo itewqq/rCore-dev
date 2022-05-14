@@ -13,6 +13,7 @@ use crate::mm::{MapPermission, VirtAddr};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 
+pub use action::{SignalAction, SignalActions};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -23,10 +24,9 @@ pub use processor::{
     take_current_task,
 };
 use scheduler::StrideScheduler;
+pub use signal::{SignalFlags, MAX_SIG};
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
-pub use action::{SignalAction, SignalActions};
-pub use signal::{MAX_SIG, SignalFlags};
 
 pub use context::TaskContext;
 
@@ -150,7 +150,8 @@ fn call_kernel_signal_handler(signal: SignalFlags) {
                 task_inner.frozen = false;
             }
         }
-        _ => { // default to kill
+        _ => {
+            // default to kill
             task_inner.killed = true;
         }
     }

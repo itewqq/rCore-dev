@@ -38,7 +38,13 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     match syscall_id {
         SYSCALL_DUP => sys_dup(args[0]),
         SYSCALL_UNLINKAT => sys_unlinkat(args[0] as i32, args[1] as *const u8, args[2] as u32),
-        SYSCALL_LINKAT => sys_linkat(args[0] as i32, args[1] as *const u8, args[2] as i32, args[3] as *const u8, args[4] as u32),
+        SYSCALL_LINKAT => sys_linkat(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as i32,
+            args[3] as *const u8,
+            args[4] as u32,
+        ),
         SYSCALL_OPEN => sys_open(args[0] as *const u8, args[1] as u32),
         SYSCALL_CLOSE => sys_close(args[0]),
         SYSCALL_PIPE => sys_pipe(args[0] as *mut usize),
@@ -48,7 +54,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_YIELD => sys_yield(),
         SYSCALL_KILL => sys_kill(args[0], args[1] as i32),
-        SYSCALL_SIGACTION => sys_sigaction(args[0] as i32, args[1] as *const SignalAction, args[2] as *mut SignalAction),
+        SYSCALL_SIGACTION => sys_sigaction(
+            args[0] as i32,
+            args[1] as *const SignalAction,
+            args[2] as *mut SignalAction,
+        ),
         SYSCALL_SIGPROCMASK => sys_sigprocmask(args[0] as u32),
         SYSCALL_SIGRETURN => sys_sigretrun(),
         SYSCALL_SETPRIORITY => sys_set_priority(args[0]),
@@ -62,4 +72,3 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }
-

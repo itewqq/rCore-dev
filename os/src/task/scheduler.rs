@@ -1,5 +1,5 @@
-use core::cmp::{Ord, Ordering};
 use alloc::collections::BinaryHeap;
+use core::cmp::{Ord, Ordering};
 
 pub const BIG_STRIDE: usize = usize::MAX;
 
@@ -11,11 +11,11 @@ pub struct Stride {
 
 impl Stride {
     pub fn new(id: usize, pass: usize) -> Self {
-        Self { id, pass, }
+        Self { id, pass }
     }
 
     pub fn zeros() -> Self {
-        Self { id: 0, pass: 0, }
+        Self { id: 0, pass: 0 }
     }
 
     pub fn abs_diff(&self, other: &Self) -> usize {
@@ -25,7 +25,6 @@ impl Stride {
             self.pass - other.pass
         }
     }
-
 }
 
 impl Ord for Stride {
@@ -57,14 +56,16 @@ pub struct StrideScheduler {
 
 impl StrideScheduler {
     pub fn new() -> Self {
-        Self {queue: BinaryHeap::new()}
+        Self {
+            queue: BinaryHeap::new(),
+        }
     }
 
     pub fn create_task(&mut self, id: usize) {
         self.queue.push(Stride::new(id, 0));
     }
 
-    pub fn insert_task(&mut self, id: usize, pass: usize){
+    pub fn insert_task(&mut self, id: usize, pass: usize) {
         self.queue.push(Stride::new(id, pass));
     }
 

@@ -3,7 +3,7 @@ use spin::Mutex;
 
 use crate::{get_block_cache, layout::SuperBlock};
 
-use super::{block_cache_sync_all, Bitmap, BlockDevice, DiskInode, DiskInodeType, BLOCK_SZ, Inode};
+use super::{block_cache_sync_all, Bitmap, BlockDevice, DiskInode, DiskInodeType, Inode, BLOCK_SZ};
 
 type DataBlock = [u8; BLOCK_SZ];
 

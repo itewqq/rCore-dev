@@ -9,7 +9,9 @@ pub use address::{StepByOne, VPNRange};
 pub use frame_allocator::{frame_alloc, frame_dealloc, FrameTracker};
 pub use memory_set::remap_test;
 pub use memory_set::{kernel_token, MapArea, MapPermission, MapType, MemorySet, KERNEL_SPACE};
-pub use page_table::{translated_byte_buffers, translated_ref, translated_refmut, translated_str, PageTableEntry};
+pub use page_table::{
+    translated_byte_buffers, translated_ref, translated_refmut, translated_str, PageTableEntry,
+};
 pub use page_table::{PTEFlags, PageTable, UserBuffer, UserBufferIterator};
 
 pub fn init() {

@@ -3,22 +3,15 @@ mod context;
 use core::arch::{asm, global_asm};
 use riscv::register::{
     mtvec::TrapMode,
-    stvec,
-    scause::{
-        self,
-        Trap,
-        Exception,
-        Interrupt,
-    },
-    stval,
-    sie,
+    scause::{self, Exception, Interrupt, Trap},
+    sie, stval, stvec,
 };
 
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{
     check_signals_error_of_current, current_add_signal, current_trap_cx, current_user_token,
-    exit_current_and_run_next, suspend_current_and_run_next, SignalFlags, handle_signals,
+    exit_current_and_run_next, handle_signals, suspend_current_and_run_next, SignalFlags,
 };
 use crate::timer::set_next_trigger;
 
@@ -27,7 +20,9 @@ pub use context::TrapContext;
 global_asm!(include_str!("trap.S"));
 
 pub fn init() {
-    extern "C" { fn __alltraps(); }
+    extern "C" {
+        fn __alltraps();
+    }
     unsafe {
         stvec::write(__alltraps as usize, TrapMode::Direct);
     }
@@ -75,7 +70,10 @@ pub fn trap_handler() -> ! {
         Trap::Exception(Exception::UserEnvCall) => {
             let mut cx = current_trap_cx();
             cx.sepc += 4;
-            let result = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]]) as usize;
+            let result = syscall(
+                cx.x[17],
+                [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]],
+            ) as usize;
             // sys_exec may change the trap context
             cx = current_trap_cx();
             cx.x[10] = result;
@@ -96,7 +94,11 @@ pub fn trap_handler() -> ! {
             suspend_current_and_run_next();
         }
         _ => {
-            panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
+            panic!(
+                "Unsupported trap {:?}, stval = {:#x}!",
+                scause.cause(),
+                stval
+            );
         }
     }
     // handle signals (handle the sent signal)
@@ -117,5 +119,7 @@ fn set_user_trap_entry() {
 }
 
 pub fn enable_timer_interrupt() {
-    unsafe { sie::set_stimer(); }
+    unsafe {
+        sie::set_stimer();
+    }
 }

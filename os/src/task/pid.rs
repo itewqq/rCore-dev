@@ -66,13 +66,15 @@ impl KernelStack {
     pub fn new(pid: &PidHandle) -> Self {
         let pid = pid.0;
         let (bottom, top) = kernel_stack_position(pid);
-        if let Err(e) = KERNEL_SPACE.exclusive_access().insert_framed_area(bottom.into(), top.into(), MapPermission::R | MapPermission:: W){
+        if let Err(e) = KERNEL_SPACE.exclusive_access().insert_framed_area(
+            bottom.into(),
+            top.into(),
+            MapPermission::R | MapPermission::W,
+        ) {
             error!("Cannot allocate kernel stack for {}, {}", pid, e);
-            return Self{ pid: usize::MAX, };
+            return Self { pid: usize::MAX };
         }
-        Self {
-            pid
-        }
+        Self { pid }
     }
 
     pub fn get_top(&self) -> usize {
@@ -80,12 +82,14 @@ impl KernelStack {
         top
     }
 
-    pub fn put_on_top<T>(&self, value: T) -> *mut T where
-        T: Sized {
-            let top = self.get_top();
-            let ptr_mut = (top - core::mem::size_of::<T>()) as *mut T;
-            unsafe {*ptr_mut = value};
-            ptr_mut
+    pub fn put_on_top<T>(&self, value: T) -> *mut T
+    where
+        T: Sized,
+    {
+        let top = self.get_top();
+        let ptr_mut = (top - core::mem::size_of::<T>()) as *mut T;
+        unsafe { *ptr_mut = value };
+        ptr_mut
     }
 }
 

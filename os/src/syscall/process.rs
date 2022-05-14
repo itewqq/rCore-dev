@@ -1,24 +1,16 @@
+use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use alloc::string::String;
 use core::mem::size_of;
 
 use crate::mm::translated_ref;
 
-use crate::task::{
-    current_task,
-    current_user_token,
-    set_current_prio,
-    add_task,
-    pid2task,
-    suspend_current_and_run_next,
-    exit_current_and_run_next,
-    SignalFlags, 
-    SignalAction, 
-    MAX_SIG,
-};
 use crate::fs::{open_file, OpenFlags};
-use crate::mm::{translated_byte_buffers, translated_str, translated_refmut};
+use crate::mm::{translated_byte_buffers, translated_refmut, translated_str};
+use crate::task::{
+    add_task, current_task, current_user_token, exit_current_and_run_next, pid2task,
+    set_current_prio, suspend_current_and_run_next, SignalAction, SignalFlags, MAX_SIG,
+};
 use crate::timer::get_time_us;
 
 #[repr(C)]
@@ -41,7 +33,7 @@ pub fn sys_yield() -> isize {
 pub fn sys_set_priority(prio: usize) -> isize {
     if (prio as isize) < 2 {
         -1
-    } else{
+    } else {
         set_current_prio(prio);
         prio as isize
     }
@@ -76,8 +68,8 @@ pub fn sys_fork() -> isize {
     // modify return address in trap context
     let trap_cx = child_task.inner_exclusive_access().get_trap_cx();
     // return value of child is 0
-    trap_cx.x[10] = 0;  //x[10] is a0 reg
-    // add task to scheduler queue
+    trap_cx.x[10] = 0; //x[10] is a0 reg
+                       // add task to scheduler queue
     add_task(child_task);
     child_pid as isize
 }
@@ -92,7 +84,9 @@ pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
             break;
         }
         args_vec.push(translated_str(token, arg_str_ptr as *const u8));
-        unsafe { args = args.add(1); }
+        unsafe {
+            args = args.add(1);
+        }
     }
     if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {
         let all_data = app_inode.read_all();
@@ -113,20 +107,19 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     let task = current_task().unwrap();
     let mut inner = task.inner_exclusive_access();
     // no such child
-    if inner.children
+    if inner
+        .children
         .iter()
-        .find(|p| {pid == -1 || pid as usize == p.getpid()})
-        .is_none() {
+        .find(|p| pid == -1 || pid as usize == p.getpid())
+        .is_none()
+    {
         return -1;
     }
     // get child
-    let pair = inner.children
-        .iter()
-        .enumerate()
-        .find(|(_, p)| {
-            // ++++ temporarily access child PCB exclusively
-            p.inner_exclusive_access().is_zombie() && (pid == -1 || pid as usize == p.getpid())
-            // ++++ stop exclusively accessing child PCB
+    let pair = inner.children.iter().enumerate().find(|(_, p)| {
+        // ++++ temporarily access child PCB exclusively
+        p.inner_exclusive_access().is_zombie() && (pid == -1 || pid as usize == p.getpid())
+        // ++++ stop exclusively accessing child PCB
     });
     if let Some((idx, _)) = pair {
         let child = inner.children.remove(idx);
@@ -191,15 +184,22 @@ pub fn sys_sigretrun() -> isize {
 }
 
 fn check_sigaction_error(signal: SignalFlags, action: usize, old_action: usize) -> bool {
-    if action == 0 || old_action == 0 || signal == SignalFlags::SIGKILL ||
-        signal == SignalFlags::SIGSTOP {
+    if action == 0
+        || old_action == 0
+        || signal == SignalFlags::SIGKILL
+        || signal == SignalFlags::SIGSTOP
+    {
         true
     } else {
         false
     }
 }
 
-pub fn sys_sigaction(signum: i32, action: *const SignalAction, old_action: *mut SignalAction) -> isize {
+pub fn sys_sigaction(
+    signum: i32,
+    action: *const SignalAction,
+    old_action: *mut SignalAction,
+) -> isize {
     let token = current_user_token();
     if let Some(task) = current_task() {
         let mut inner = task.inner_exclusive_access();

@@ -1,4 +1,4 @@
-use super::{Stat, TimeVal, SignalAction};
+use super::{SignalAction, Stat, TimeVal};
 
 pub const SYSCALL_OPENAT: usize = 56;
 pub const SYSCALL_CLOSE: usize = 57;
@@ -156,7 +156,10 @@ pub fn sys_fork() -> isize {
 }
 
 pub fn sys_exec(path: &str, args: &[*const u8]) -> isize {
-    syscall(SYSCALL_EXEC, [path.as_ptr() as usize, args.as_ptr() as usize, 0])
+    syscall(
+        SYSCALL_EXEC,
+        [path.as_ptr() as usize, args.as_ptr() as usize, 0],
+    )
 }
 
 pub fn sys_waitpid(pid: isize, xstatus: *mut i32) -> isize {
@@ -191,8 +194,15 @@ pub fn sys_kill(pid: usize, signal: i32) -> isize {
     syscall(SYSCALL_KILL, [pid, signal as usize, 0])
 }
 
-pub fn sys_sigaction(signum: i32, action: *const SignalAction, old_action: *const SignalAction) -> isize {
-    syscall(SYSCALL_SIGACTION, [signum as usize , action as usize, old_action as usize])
+pub fn sys_sigaction(
+    signum: i32,
+    action: *const SignalAction,
+    old_action: *const SignalAction,
+) -> isize {
+    syscall(
+        SYSCALL_SIGACTION,
+        [signum as usize, action as usize, old_action as usize],
+    )
 }
 
 pub fn sys_sigprocmask(mask: u32) -> isize {

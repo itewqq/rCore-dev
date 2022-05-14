@@ -32,23 +32,19 @@ impl Inode {
     }
 
     pub fn inode_id(&self) -> u32 {
-        self.read_disk_inode(|disk_node|{
-            disk_node.inode_id
-        })
+        self.read_disk_inode(|disk_node| disk_node.inode_id)
     }
 
     pub fn nlink(&self) -> usize {
-        self.read_disk_inode(|disk_node|{
-            disk_node.nlink as usize
-        })
+        self.read_disk_inode(|disk_node| disk_node.nlink as usize)
     }
 
     // we only have two Inode type for now
     pub fn mode(&self) -> DiskInodeType {
-        self.read_disk_inode(|disk_node|{
+        self.read_disk_inode(|disk_node| {
             if disk_node.is_dir() {
                 DiskInodeType::Directory
-            }else{
+            } else {
                 DiskInodeType::File
             }
         })

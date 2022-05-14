@@ -1,11 +1,11 @@
-use super::address::{PhysPageNum, PhysAddr, VirtPageNum, VirtAddr};
-use super::frame_allocator::{FrameTracker, frame_alloc};
 use super::address::StepByOne;
+use super::address::{PhysAddr, PhysPageNum, VirtAddr, VirtPageNum};
+use super::frame_allocator::{frame_alloc, FrameTracker};
 
-use bitflags::*;
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use alloc::string::String;
+use bitflags::*;
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -60,7 +60,6 @@ pub struct PageTable {
     frames: Vec<FrameTracker>,
 }
 
-
 impl PageTable {
     pub fn new() -> Self {
         let frame = frame_alloc().unwrap();
@@ -73,7 +72,7 @@ impl PageTable {
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
     }
-    
+
     pub fn from_token(satp: usize) -> Self {
         Self {
             root_ppn: PhysPageNum::from(satp & ((1usize << 44) - 1)),
@@ -82,8 +81,7 @@ impl PageTable {
     }
 
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
-        self.find_pte(vpn)
-            .map(|pte| {pte.clone()})
+        self.find_pte(vpn).map(|pte| pte.clone())
     }
 
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
@@ -175,7 +173,10 @@ pub fn translated_str(token: usize, ptr: *const u8) -> String {
     let mut string = String::new();
     let mut va = ptr as usize;
     loop {
-        let ch: u8 = *(page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut());
+        let ch: u8 = *(page_table
+            .translate_va(VirtAddr::from(va))
+            .unwrap()
+            .get_mut());
         if ch == 0 {
             break;
         } else {

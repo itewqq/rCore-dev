@@ -3,14 +3,7 @@ use lazy_static::*;
 
 use crate::sync::UPSafeCell;
 
-use super::{
-    task::TaskControlBlock, 
-    TaskContext, 
-    TrapContext, 
-    TaskStatus,
-    fetch_task,
-    __switch,
-};
+use super::{task::TaskControlBlock, TaskContext, TaskStatus, TrapContext, __switch, fetch_task};
 
 pub struct Processor {
     current: Option<Arc<TaskControlBlock>>,
@@ -32,7 +25,6 @@ impl Processor {
     pub fn clone_current(&self) -> Option<Arc<TaskControlBlock>> {
         self.current.as_ref().map(Arc::clone)
     }
-
 
     fn get_idle_task_cx_ptr(&mut self) -> *mut TaskContext {
         &mut self.idle_task_cx as *mut _
@@ -95,9 +87,6 @@ pub fn schedule(switched_task_cx_ptr: *mut TaskContext) {
     let idle_task_cx_ptr = processor.get_idle_task_cx_ptr();
     drop(processor);
     unsafe {
-        __switch(
-            switched_task_cx_ptr,
-            idle_task_cx_ptr,
-        );
+        __switch(switched_task_cx_ptr, idle_task_cx_ptr);
     }
 }

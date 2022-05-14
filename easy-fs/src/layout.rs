@@ -77,11 +77,11 @@ impl DiskInode {
         self.type_ = type_;
     }
 
-    pub fn inc_nlink(&mut self){
+    pub fn inc_nlink(&mut self) {
         self.nlink += 1;
     }
 
-    pub fn dec_nlink(&mut self){
+    pub fn dec_nlink(&mut self) {
         self.nlink -= 1;
     }
 

@@ -1,22 +1,19 @@
-use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE, translated_refmut};
 use crate::config::TRAP_CONTEXT;
-use crate::sync::UPSafeCell;
-use crate::trap::{TrapContext, trap_handler};
 use crate::fs::{File, Stdin, Stdout};
+use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
+use crate::sync::UPSafeCell;
+use crate::trap::{trap_handler, TrapContext};
 
-use super::{TaskContext, SignalActions, SignalFlags};
-use super::pid::{PidHandle, KernelStack, pid_alloc};
+use super::pid::{pid_alloc, KernelStack, PidHandle};
+use super::{SignalActions, SignalFlags, TaskContext};
 
-use core::cell::RefMut;
 use alloc::{
-    sync::{
-        Weak,
-        Arc,
-    },
     string::String,
+    sync::{Arc, Weak},
     vec,
     vec::Vec,
 };
+use core::cell::RefMut;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
@@ -43,8 +40,8 @@ pub struct TaskControlBlockInner {
     pub task_cx: TaskContext,
     pub task_status: TaskStatus,
     pub memory_set: MemorySet,
-    pub parent: Option<Weak<TaskControlBlock> >,
-    pub children: Vec<Arc<TaskControlBlock> >,
+    pub parent: Option<Weak<TaskControlBlock>>,
+    pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
     pub signals: SignalFlags,
@@ -57,7 +54,7 @@ pub struct TaskControlBlockInner {
     pub killed: bool,
     // if the task is frozen by a signal
     pub frozen: bool,
-    pub trap_ctx_backup: Option<TrapContext>
+    pub trap_ctx_backup: Option<TrapContext>,
 }
 
 impl TaskControlBlockInner {
@@ -95,7 +92,7 @@ impl TaskControlBlock {
     pub fn inner_exclusive_access(&self) -> RefMut<'_, TaskControlBlockInner> {
         self.inner.exclusive_access()
     }
-    
+
     pub fn getpid(&self) -> usize {
         self.pid.0
     }
@@ -112,37 +109,39 @@ impl TaskControlBlock {
         let pid_handle = pid_alloc();
         let kernel_stack = KernelStack::new(&pid_handle);
         let kernel_stack_top = kernel_stack.get_top();
-         // push a task context which goes to trap_return to the top of kernel stack
+        // push a task context which goes to trap_return to the top of kernel stack
         let task_control_block = Self {
             pid: pid_handle,
             kernel_stack,
-            inner: unsafe { UPSafeCell::new(TaskControlBlockInner {
-                trap_cx_ppn,
-                base_size: user_sp,
-                priority: 16,
-                pass: 0,
-                task_cx: TaskContext::goto_trap_return(kernel_stack_top),
-                task_status,
-                memory_set,
-                parent: None,
-                children: Vec::new(),
-                exit_code: 0,
-                fd_table: vec![
-                    // 0 -> stdin
-                    Some(Arc::new(Stdin)),
-                    // 1 -> stdout
-                    Some(Arc::new(Stdout)),
-                    // 2 -> stderr
-                    Some(Arc::new(Stdout)),
-                ],
-                signals: SignalFlags::empty(),
-                signal_mask: SignalFlags::empty(),
-                handling_sig: -1,
-                signal_actions: SignalActions::default(),
-                killed: false,
-                frozen: false,
-                trap_ctx_backup: None
-            })},
+            inner: unsafe {
+                UPSafeCell::new(TaskControlBlockInner {
+                    trap_cx_ppn,
+                    base_size: user_sp,
+                    priority: 16,
+                    pass: 0,
+                    task_cx: TaskContext::goto_trap_return(kernel_stack_top),
+                    task_status,
+                    memory_set,
+                    parent: None,
+                    children: Vec::new(),
+                    exit_code: 0,
+                    fd_table: vec![
+                        // 0 -> stdin
+                        Some(Arc::new(Stdin)),
+                        // 1 -> stdout
+                        Some(Arc::new(Stdout)),
+                        // 2 -> stderr
+                        Some(Arc::new(Stdout)),
+                    ],
+                    signals: SignalFlags::empty(),
+                    signal_mask: SignalFlags::empty(),
+                    handling_sig: -1,
+                    signal_actions: SignalActions::default(),
+                    killed: false,
+                    frozen: false,
+                    trap_ctx_backup: None,
+                })
+            },
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.inner_exclusive_access().get_trap_cx();
@@ -156,16 +155,20 @@ impl TaskControlBlock {
         task_control_block
     }
 
-    pub fn exec(&self, elf_data: &[u8], args: Vec<String>)  {
+    pub fn exec(&self, elf_data: &[u8], args: Vec<String>) {
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, mut user_sp, entry_point) = MemorySet::from_elf(elf_data);
         // push arguments on user stack
         user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();
         let argv_base = user_sp;
         let mut argv: Vec<_> = (0..=args.len())
-            .map(|arg|{
-                translated_refmut(memory_set.token(), (argv_base + arg * core::mem::size_of::<usize>()) as *mut usize)
-        }).collect();
+            .map(|arg| {
+                translated_refmut(
+                    memory_set.token(),
+                    (argv_base + arg * core::mem::size_of::<usize>()) as *mut usize,
+                )
+            })
+            .collect();
         *argv[args.len()] = 0;
         for i in 0..args.len() {
             user_sp -= args[i].len() + 1;
@@ -204,9 +207,8 @@ impl TaskControlBlock {
     pub fn fork(self: &Arc<TaskControlBlock>) -> Arc<TaskControlBlock> {
         // get parent PCB
         let mut parent_inner = self.inner.exclusive_access();
-        // make a copy of memory space 
-        let memory_set = MemorySet::from_existed_userspace(
-            &parent_inner.memory_set);
+        // make a copy of memory space
+        let memory_set = MemorySet::from_existed_userspace(&parent_inner.memory_set);
         // allocate a pid and kernel stack
         let pid_handle = pid_alloc();
         let kernel_stack = KernelStack::new(&pid_handle);
@@ -226,28 +228,30 @@ impl TaskControlBlock {
             }
         }
         // create inner
-        let task_control_block_inner = unsafe { UPSafeCell::new(TaskControlBlockInner { 
-            trap_cx_ppn: trap_cx_ppn, 
-            base_size: parent_inner.base_size, 
-            priority: parent_inner.priority, 
-            pass: parent_inner.pass, 
-            task_cx: TaskContext::goto_trap_return(kernel_stack_top), 
-            task_status: TaskStatus::Ready, 
-            memory_set, 
-            parent: Some(Arc::downgrade(self)), 
-            children: Vec::new(), 
-            exit_code: 0, 
-            fd_table: new_fd_table,
-            // TODO shall we inherit from parent?
-            signals: SignalFlags::empty(),
-            // inherit the signal_mask and signal_action
-            signal_mask: parent_inner.signal_mask,
-            handling_sig: -1,
-            signal_actions: parent_inner.signal_actions.clone(),
-            killed: false,
-            frozen: false,
-            trap_ctx_backup: None
-        })};
+        let task_control_block_inner = unsafe {
+            UPSafeCell::new(TaskControlBlockInner {
+                trap_cx_ppn: trap_cx_ppn,
+                base_size: parent_inner.base_size,
+                priority: parent_inner.priority,
+                pass: parent_inner.pass,
+                task_cx: TaskContext::goto_trap_return(kernel_stack_top),
+                task_status: TaskStatus::Ready,
+                memory_set,
+                parent: Some(Arc::downgrade(self)),
+                children: Vec::new(),
+                exit_code: 0,
+                fd_table: new_fd_table,
+                // TODO shall we inherit from parent?
+                signals: SignalFlags::empty(),
+                // inherit the signal_mask and signal_action
+                signal_mask: parent_inner.signal_mask,
+                handling_sig: -1,
+                signal_actions: parent_inner.signal_actions.clone(),
+                killed: false,
+                frozen: false,
+                trap_ctx_backup: None,
+            })
+        };
         // modify kernel sp in child's trap_cx
         let trap_cx = task_control_block_inner.exclusive_access().get_trap_cx();
         trap_cx.kernel_sp = kernel_stack_top;
