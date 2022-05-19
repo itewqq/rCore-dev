@@ -15,3 +15,5 @@ Hats off to the *rCore-OS team* and the *Writing an OS in Rust* series.
 [Lab4: Address Space](./reports/lab4.md)
 
 [Lab5: Process](./reports/lab5.md)
+
+[Lab6: File system](./reports/lab6.md)
