@@ -17,3 +17,5 @@ Hats off to the *rCore-OS team* and the *Writing an OS in Rust* series.
 [Lab5: Process](./reports/lab5.md)
 
 [Lab6: File system](./reports/lab6.md)
+
+[Lab7: Inter-process Communication and I/O Redirection](./reports/lab7.md)
