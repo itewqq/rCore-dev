@@ -1,7 +1,8 @@
 mod action;
 mod context;
+mod id;
 mod manager;
-mod pid;
+mod process;
 mod processor;
 mod scheduler;
 mod signal;
@@ -17,8 +18,10 @@ pub use action::{SignalAction, SignalActions};
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+pub use id::RecycleAllocator;
 use lazy_static::*;
 pub use manager::{add_task, fetch_task, pid2task};
+pub use process::ProcessControlBlock;
 pub use processor::{
     current_pid, current_task, current_trap_cx, current_user_token, run_tasks, schedule,
     take_current_task,

@@ -1,10 +1,10 @@
-use crate::config::TRAP_CONTEXT;
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
+use crate::task::process::ProcessControlBlock;
 
-use super::pid::{pid_alloc, KernelStack, PidHandle};
+use super::id::{pid_alloc, KernelStack};
 use super::{SignalActions, SignalFlags, TaskContext};
 
 use alloc::{
@@ -18,43 +18,35 @@ use core::cell::RefMut;
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
     UnInit,
-    Ready,
     Running,
     Zombie,
     Exited,
 }
 
+pub struct TaskUserRes {
+    pub tid: usize,
+    pub ustack_base: usize,
+    pub process: Weak<ProcessControlBlock>,
+}
+
 pub struct TaskControlBlock {
     // immutable
-    pub pid: PidHandle,
+    pub process: Weak<ProcessControlBlock>,
     pub kernel_stack: KernelStack,
     // mutable
     inner: UPSafeCell<TaskControlBlockInner>,
 }
 
 pub struct TaskControlBlockInner {
+    // task resource, will not be changed after initialization
+    pub res: Option<TaskUserRes>,
     pub trap_cx_ppn: PhysPageNum,
-    pub base_size: usize,
-    pub priority: usize,
-    pub pass: usize,
     pub task_cx: TaskContext,
     pub task_status: TaskStatus,
-    pub memory_set: MemorySet,
-    pub parent: Option<Weak<TaskControlBlock>>,
-    pub children: Vec<Arc<TaskControlBlock>>,
-    pub exit_code: i32,
-    pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
-    pub signals: SignalFlags,
+    // signals
     pub signal_mask: SignalFlags,
-    // the signal which is being handling
-    pub handling_sig: isize,
-    // Signal actions
-    pub signal_actions: SignalActions,
-    // if the task is killed
-    pub killed: bool,
-    // if the task is frozen by a signal
-    pub frozen: bool,
     pub trap_ctx_backup: Option<TrapContext>,
+    exit_code: i32,
 }
 
 impl TaskControlBlockInner {
