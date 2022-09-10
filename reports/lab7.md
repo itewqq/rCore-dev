@@ -202,3 +202,143 @@ pub fn sys_pipe(pipe: *mut usize) -> isize {
 
 
 ## Signal
+
+All the signals sent to a process are stored in task.inner's bits. 
+
+```rust
+bitflags! {
+    pub struct SignalFlags: u32 {
+        const SIGDEF = 1; // Default signal handling
+        const SIGHUP = 1 << 1;
+        const SIGINT = 1 << 2;
+        const SIGQUIT = 1 << 3;
+        const SIGILL = 1 << 4;
+        const SIGTRAP = 1 << 5;
+        const SIGABRT = 1 << 6;
+        const SIGBUS = 1 << 7;
+        const SIGFPE = 1 << 8;
+        const SIGKILL = 1 << 9;
+        const SIGUSR1 = 1 << 10;
+        const SIGSEGV = 1 << 11;
+        const SIGUSR2 = 1 << 12;
+        const SIGPIPE = 1 << 13;
+        const SIGALRM = 1 << 14;
+        const SIGTERM = 1 << 15;
+        const SIGSTKFLT = 1 << 16;
+        const SIGCHLD = 1 << 17;
+        const SIGCONT = 1 << 18;
+        const SIGSTOP = 1 << 19;
+        const SIGTSTP = 1 << 20;
+        const SIGTTIN = 1 << 21;
+        const SIGTTOU = 1 << 22;
+        const SIGURG = 1 << 23;
+        const SIGXCPU = 1 << 24;
+        const SIGXFSZ = 1 << 25;
+        const SIGVTALRM = 1 << 26;
+        const SIGPROF = 1 << 27;
+        const SIGWINCH = 1 << 28;
+        const SIGIO = 1 << 29;
+        const SIGPWR = 1 << 30;
+        const SIGSYS = 1 << 31;
+    }
+}
+```
+
+Then in the end of trap handler, call `handle_signals`, which loops until the task is killed or not frozen. At the end of each loop, kernel will check pending signals for current task then yield the processor. In `check_pending_signals`, the kernel iterate over all signals and handle the signal according to it's type. 
+
+```rust
+fn check_pending_signals() {
+    for sig in 0..(MAX_SIG + 1) {
+        let task = current_task().unwrap();
+        let task_inner = task.inner_exclusive_access();
+        let signal = SignalFlags::from_bits(1 << sig).unwrap();
+        // if we should handle this signal
+        if task_inner.signals.contains(signal) && (!task_inner.signal_mask.contains(signal)) {
+            // current no handling signal
+            if task_inner.handling_sig == -1 {
+                drop(task_inner);
+                drop(task);
+                if signal == SignalFlags::SIGKILL
+                    || signal == SignalFlags::SIGSTOP
+                    || signal == SignalFlags::SIGCONT
+                    || signal == SignalFlags::SIGDEF
+                {
+                    // signal is a kernel signal
+                    call_kernel_signal_handler(signal);
+                } else {
+                    // signal is a user signal
+                    call_user_signal_handler(sig, signal);
+                    return;
+                }
+            } else {
+                // not already handled
+                if !task_inner.signal_actions.table[task_inner.handling_sig as usize]
+                    .mask
+                    .contains(signal)
+                {
+                    drop(task_inner);
+                    drop(task);
+                    if signal == SignalFlags::SIGKILL
+                        || signal == SignalFlags::SIGSTOP
+                        || signal == SignalFlags::SIGCONT
+                        || signal == SignalFlags::SIGDEF
+                    {
+                        // signal is a kernel signal
+                        call_kernel_signal_handler(signal);
+                    } else {
+                        // signal is a user signal
+                        call_user_signal_handler(sig, signal);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+In `call_user_signal_handler` function, we set the handling signal to the corresponding `sig`.
+
+```rust
+fn call_user_signal_handler(sig: usize, signal: SignalFlags) {
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+
+    let handler = task_inner.signal_actions.table[sig].handler;
+    if handler != 0 {
+        // user handler
+        // change current mask
+        task_inner.signal_mask = task_inner.signal_actions.table[sig].mask;
+        // handle flag
+        task_inner.handling_sig = sig as isize;
+        task_inner.signals ^= signal;
+        // backup trapframe
+        let mut trap_ctx = task_inner.get_trap_cx();
+        task_inner.trap_ctx_backup = Some(*trap_ctx);
+        // modify trapframe
+        trap_ctx.sepc = handler;
+        // put args (a0)
+        trap_ctx.x[10] = sig;
+    } else {
+        // default action
+        info!("task/call_user_signal_handler: default action: ignore it or kill process");
+    }
+}
+```
+
+The control flow is changed by modifying trap context, so we have to backup the original context. The signal handler will use sigreturn to switch back to original control flow:
+
+```rust
+pub fn sys_sigretrun() -> isize {
+    if let Some(task) = current_task() {
+        let mut inner = task.inner_exclusive_access();
+        inner.handling_sig = -1;
+        // restore the trap context
+        let trap_ctx = inner.get_trap_cx();
+        *trap_ctx = inner.trap_ctx_backup.unwrap();
+        0
+    } else {
+        -1
+    }
+}
+```

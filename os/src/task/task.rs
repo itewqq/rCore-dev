@@ -17,14 +17,15 @@ use core::cell::RefMut;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
-    UnInit,
+    Ready,
     Running,
-    Zombie,
-    Exited,
+    Blocking,
 }
 
 pub struct TaskUserRes {
+    // thread id
     pub tid: usize,
+    // user stack
     pub ustack_base: usize,
     pub process: Weak<ProcessControlBlock>,
 }
@@ -40,11 +41,15 @@ pub struct TaskControlBlock {
 pub struct TaskControlBlockInner {
     // task resource, will not be changed after initialization
     pub res: Option<TaskUserRes>,
+    // trap context stored location, this helps the kernel restore the context in usermode
     pub trap_cx_ppn: PhysPageNum,
+    // kernel mode task context, including kernel stack and return address
     pub task_cx: TaskContext,
+    // Status of this thread
     pub task_status: TaskStatus,
-    // signals
+    // signal flags
     pub signal_mask: SignalFlags,
+    // backup for signal handlers
     pub trap_ctx_backup: Option<TrapContext>,
     exit_code: i32,
 }
@@ -54,20 +59,8 @@ impl TaskControlBlockInner {
         self.trap_cx_ppn.get_mut()
     }
 
-    pub fn get_user_token(&self) -> usize {
-        self.memory_set.token()
-    }
-
     pub fn get_status(&self) -> TaskStatus {
         self.task_status
-    }
-
-    pub fn set_prio(&mut self, prio: usize) {
-        self.priority = prio;
-    }
-
-    pub fn is_zombie(&self) -> bool {
-        self.task_status == TaskStatus::Zombie
     }
 
     pub fn alloc_fd(&mut self) -> usize {
