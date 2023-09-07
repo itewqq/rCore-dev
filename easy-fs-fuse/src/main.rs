@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 const BLOCK_SZ: usize = 512;
-const TOTAL_BLOCKS: usize = 0x4000;
+const TOTAL_BLOCKS: u64 = 0x8000;
 
 struct BlockFile(Mutex<File>);
 
@@ -68,6 +68,7 @@ fn easy_fs_pack() -> std::io::Result<()> {
         })
         .collect();
     for app in apps {
+        println!("Packing {}", app);
         // load app data from host file system
         let mut host_file = File::open(format!("{}{}", target_path, app)).unwrap();
         let mut all_data: Vec<u8> = Vec::new();
