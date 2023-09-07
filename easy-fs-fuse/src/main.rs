@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 const BLOCK_SZ: usize = 512;
-const TOTAL_BLOCKS: usize = 0x4000;
+const TOTAL_BLOCKS: usize = 0x8000;
 
 struct BlockFile(Mutex<File>);
 
